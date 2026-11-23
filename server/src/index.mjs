@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { hmac, isLicense, licenseLabel, newRefresh, normalizeLicense, randomLicense, safeEqual, sha256, signAccess, verifyAccess } from './crypto.mjs';
 import { createOwnerHandler } from './owner.mjs';
 import { createDiscordHandler } from './discord.mjs';
+import { createZuzifyHandler } from './zuzify.mjs';
 
 const required = ['DATABASE_URL', 'ZORA_KEY_PEPPER', 'ZORA_SESSION_SECRET'];
 for (const key of required) if (!process.env[key] || process.env[key].length < 24) throw new Error(`Missing or insecure ${key}`);
@@ -127,6 +128,7 @@ async function createLicenses({ quantity = 1, maxDevices = 1, note = '' }) {
 }
 const handleOwner = createOwnerHandler({ db, json, error, body, audit, createLicenses });
 const handleDiscord = createDiscordHandler({ db, json, error, audit, sessionSecret: cfg.session });
+const handleZuzify = createZuzifyHandler({ db, json, error, audit, sessionSecret: cfg.session });
 async function handler(req, res) {
   try {
     const url = new URL(req.url, 'http://localhost');
@@ -143,6 +145,7 @@ async function handler(req, res) {
       return json(res, 200, await verify(token));
     }
     if (path.startsWith('/v1/discord/')) return handleDiscord(req, res, path, url);
+    if (path.startsWith('/v1/zuzify/')) return handleZuzify(req, res, path, url);
     if (path.startsWith('/v1/admin/')) return handleOwner(req, res, path, url);
     throw error(404, 'not_found', 'Endpoint not found');
   } catch (e) {
