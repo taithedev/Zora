@@ -6,7 +6,7 @@
     <StackPanel Margin="44,40,44,40" MaxWidth="870" HorizontalAlignment="Left">
       <TextBlock Text="YOUR ZORA PROFILE" Foreground="#8D8D8D" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,12"/>
       <TextBlock Text="Connected accounts." FontSize="36" FontWeight="SemiBold"/>
-      <TextBlock Text="Link your Zora license with Discord through your Zuzify Discord bot. You control the connection."
+      <TextBlock Text="Connect your verified Discord identity and Zuzify ID to this Zora license. You control both links."
                  FontSize="13" Foreground="#A2A2A2" Margin="0,10,0,32" MaxWidth="690"/>
       <Border Background="#111111" CornerRadius="18" Padding="28" Width="640" HorizontalAlignment="Left">
         <StackPanel>
@@ -32,10 +32,32 @@
           <TextBlock x:Name="Feedback" Foreground="#A0A0A0" FontSize="12" Margin="0,22,0,0" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>
+      <Border Background="#111111" CornerRadius="18" Padding="28" Margin="0,20,0,0" Width="640" HorizontalAlignment="Left">
+        <StackPanel>
+          <Grid Margin="0,0,0,16">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel>
+              <TextBlock Text="ZUZIFY ID" FontWeight="Bold" FontSize="19"/>
+              <TextBlock Text="Central Zuzify account · Verified OAuth connection" Foreground="#A0A0A0" FontSize="12" Margin="0,7,0,0"/>
+            </StackPanel>
+            <Border Grid.Column="1" Background="#242424" CornerRadius="7" Padding="11,7" VerticalAlignment="Top">
+              <TextBlock x:Name="ZuzifyLinkState" Text="NOT LINKED" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+            </Border>
+          </Grid>
+          <Border Height="1" Background="#292929" Margin="0,0,0,17"/>
+          <TextBlock x:Name="ZuzifyId" Text="Connect this license to your Zuzify account." Foreground="#A5A5A5" FontSize="12" Margin="0,0,0,22" TextWrapping="Wrap"/>
+          <StackPanel Orientation="Horizontal">
+            <Button x:Name="ZuzifyConnectButton" Style="{StaticResource AccentButton}" Content="CONNECT ZUZIFY" Padding="22,13" Click="ZuzifyConnect_Click" Margin="0,0,12,0"/>
+            <Button Content="REFRESH STATUS" Padding="22,13" Click="Refresh_Click" Margin="0,0,12,0"/>
+            <Button x:Name="ZuzifyUnlinkButton" Content="UNLINK" Padding="22,13" Visibility="Collapsed" Click="ZuzifyUnlink_Click"/>
+          </StackPanel>
+          <TextBlock x:Name="ZuzifyFeedback" Foreground="#A0A0A0" FontSize="12" Margin="0,22,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
       <Border Background="#101010" CornerRadius="14" Padding="23" Margin="0,20,0,0" Width="640" HorizontalAlignment="Left">
         <StackPanel>
           <TextBlock Text="PRIVACY AND SECURITY" FontWeight="SemiBold" FontSize="12"/>
-          <TextBlock Text="Discord asks you to authorize only basic identity access (identify). Zora stores your Discord ID and display name with your license in Neon. It never asks for your Discord password, reads your private messages, or shares your license key with the bot. Disconnect at any time."
+          <TextBlock Text="Discord asks you to authorize only basic identity access (identify). Zora stores your Discord ID and display name with your license in Neon. It never asks for your Discord password, reads your private messages, or shares your license key with the bot. Zuzify linking uses OAuth authorization-code and PKCE, without sharing passwords or license keys. Disconnect either account at any time."
                      Foreground="#A0A0A0" FontSize="12" Margin="0,11,0,0" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>
