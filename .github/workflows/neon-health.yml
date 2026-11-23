@@ -1,0 +1,20 @@
+name: Zora Neon live health
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/neon-health.yml'
+permissions:
+  contents: read
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check HTTPS and real Neon SQL connection
+        shell: bash
+        env:
+          HEALTH_URL: https://br-frosty-bar-bbmdnhr7-zoralicense.compute.c-15.us-east-1.aws.neon.tech/health
+        run: |
+          curl --fail --silent --show-error --retry 6 --retry-delay 3 --retry-all-errors --max-time 20 "$HEALTH_URL" -o health.json
+          python3 -c 'import json; d=json.load(open("health.json")); assert d.get("ok") is True and d.get("name") == "Zora"; print("Neon SQL verified; Zora API healthy")'
