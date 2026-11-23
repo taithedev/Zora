@@ -1,3 +1,4 @@
+using System.IO;
 using System.Diagnostics;
 using System.Text.Json;
 using Zora.Desktop.Models;
@@ -8,12 +9,12 @@ public sealed class EngineService
     {
         var baseDir = AppContext.BaseDirectory;
         var exe = Path.Combine(baseDir, "engine", "zora-engine.exe");
-        if (File.Exists(exe)) return (exe, []);
+        if (File.Exists(exe)) return (exe, new List<string>());
         var parent = new DirectoryInfo(baseDir);
         for (var i = 0; i < 8 && parent is not null; i++, parent = parent.Parent)
         {
             var script = Path.Combine(parent.FullName, "engine", "zora_engine.py");
-            if (File.Exists(script)) return ("python", [script]);
+            if (File.Exists(script)) return ("python", new List<string> { script });
         }
         throw new FileNotFoundException("Zora engine not found. The release includes engine/zora-engine.exe, or install Python + UnityPy for development.");
     }
