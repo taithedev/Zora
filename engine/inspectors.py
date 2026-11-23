@@ -233,8 +233,15 @@ def export_source(path: Path, root: Path, output: Path, selected_ids: set[str] |
                     destination = _inside(output, output / 'Archive' / path.name / Path(*member.parts))
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     if destination.exists():
-                        warnings.append(f'{entry.filename}: destination exists, not overwriting')
-                        continue
+                        # Repeat exports should not fail or overwrite an earlier
+                        # result. Choose an unused deterministic suffix instead.
+                        base = destination
+                        for suffix in range(1, 1001):
+                            destination = base.with_name(f'{base.stem}_{suffix}{base.suffix}')
+                            if not destination.exists(): break
+                        else:
+                            warnings.append(f'{entry.filename}: too many existing versions')
+                            continue
                     try:
                         with archive.open(entry) as source, destination.open('xb') as target:
                             copied = 0

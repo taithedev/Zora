@@ -1,0 +1,35 @@
+<UserControl x:Class="Zora.Desktop.Views.AssemblyExplorer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Black">
+  <Grid Margin="32,27,30,21">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid Grid.Row="0" Margin="0,0,0,20">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <StackPanel>
+        <TextBlock Text="Assembly explorer." FontSize="32" FontWeight="SemiBold"/>
+        <TextBlock Text="Browse .NET DLL / EXE classes and methods as readable C# without executing the program." Foreground="{StaticResource SubText}" Margin="0,8,0,0" FontSize="12"/>
+      </StackPanel>
+      <TextBlock Grid.Column="1" Text="READ ONLY · MANAGED .NET" Foreground="{StaticResource SubText}" VerticalAlignment="Center" FontSize="10"/>
+    </Grid>
+    <WrapPanel Grid.Row="1" Margin="0,0,0,15">
+      <Button Content="OPEN DLL / EXE" Style="{StaticResource AccentButton}" Click="Browse_Click" Margin="0,0,8,0"/>
+      <Button x:Name="ExportButton" Content="EXPORT DECOMPILED C#" Click="Export_Click" Margin="0,0,8,0" IsEnabled="False"/>
+      <Button Content="COPY CODE" Click="Copy_Click" Margin="0,0,8,0"/>
+      <TextBox x:Name="SearchBox" Width="225" Height="40" VerticalContentAlignment="Center" TextChanged="Search_Changed" ToolTip="Filter namespaces, types or member names"/>
+    </WrapPanel>
+    <Grid Grid.Row="2">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="270"/><ColumnDefinition Width="9"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Border Grid.Column="0" Background="#111111" CornerRadius="14" Padding="12">
+        <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <TextBlock x:Name="AssemblyName" Text="No assembly loaded" FontWeight="SemiBold" Margin="5,4,4,14" FontSize="12" TextTrimming="CharacterEllipsis"/>
+          <TreeView x:Name="AssemblyTree" Grid.Row="1" Background="Transparent" BorderThickness="0" Foreground="White" SelectedItemChanged="AssemblyTree_SelectedItemChanged" />
+        </Grid>
+      </Border>
+      <Border Grid.Column="2" Background="#090909" CornerRadius="14" ClipToBounds="True">
+        <Grid x:Name="CodeHost"/>
+      </Border>
+    </Grid>
+    <TextBlock Grid.Row="3" x:Name="StatusText" Text="Select a .NET DLL or EXE to browse types, methods, fields, and properties." Foreground="{StaticResource SubText}" FontSize="12" Margin="4,13,0,0" TextTrimming="CharacterEllipsis"/>
+  </Grid>
+</UserControl>

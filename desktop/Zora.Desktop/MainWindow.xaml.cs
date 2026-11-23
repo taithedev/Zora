@@ -115,6 +115,12 @@ public partial class MainWindow : Window
     }
     private void Explorer_Click(object sender, RoutedEventArgs e) => SwitchPage("explorer");
     private void CodeStudio_Click(object sender, RoutedEventArgs e) => SwitchPage("editor");
+    private async void AssemblyExplorer_Click(object sender, RoutedEventArgs e)
+    {
+        SwitchPage("assembly");
+        if (_source is not null && File.Exists(_source) && AssemblyInspector.Supports(_source))
+            await AssemblyExplorerView.OpenAssemblyAsync(_source);
+    }
     private void Zuro_Click(object sender, RoutedEventArgs e) => SwitchPage("zuro");
     private void Discord_Click(object sender, RoutedEventArgs e) => SwitchPage("discord");
     private void SwitchPage(string page)
@@ -122,14 +128,17 @@ public partial class MainWindow : Window
         ExplorerBody.Visibility = page == "explorer" ? Visibility.Visible : Visibility.Collapsed;
         InspectorBody.Visibility = page == "explorer" ? Visibility.Visible : Visibility.Collapsed;
         CodeStudioView.Visibility = page == "editor" ? Visibility.Visible : Visibility.Collapsed;
+        AssemblyExplorerView.Visibility = page == "assembly" ? Visibility.Visible : Visibility.Collapsed;
         ZuroView.Visibility = page == "zuro" ? Visibility.Visible : Visibility.Collapsed;
         DiscordView.Visibility = page == "discord" ? Visibility.Visible : Visibility.Collapsed;
         // The active tab must change with the page; previously Explorer stayed selected everywhere.
         ExplorerNav.Background = page == "explorer" ? new SolidColorBrush(Color.FromRgb(38,38,38)) : Brushes.Transparent;
+        AssemblyNav.Background = page == "assembly" ? new SolidColorBrush(Color.FromRgb(38,38,38)) : Brushes.Transparent;
         EditorNav.Background = page == "editor" ? new SolidColorBrush(Color.FromRgb(38,38,38)) : Brushes.Transparent;
         DiscordNav.Background = page == "discord" ? new SolidColorBrush(Color.FromRgb(38,38,38)) : Brushes.Transparent;
         ZuroNav.Background = page == "zuro" ? new SolidColorBrush(Color.FromRgb(38,38,38)) : Brushes.Transparent;
-        var active = page == "editor" ? (FrameworkElement)CodeStudioView :
+        var active = page == "assembly" ? (FrameworkElement)AssemblyExplorerView :
+                     page == "editor" ? (FrameworkElement)CodeStudioView :
                      page == "zuro" ? ZuroView :
                      page == "discord" ? DiscordView : ExplorerBody;
         active.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(230))
@@ -149,9 +158,17 @@ public partial class MainWindow : Window
             var root = Path.GetFullPath(_source);
             var file = Path.GetFullPath(Path.Combine(root, row.Source.Replace('/', Path.DirectorySeparatorChar)));
             var prefix = root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            if (!file.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) || !CodeStudioView.CanOpen(file)) return;
-            CodeStudioView.OpenFile(file);
-            SwitchPage("editor");
+            if (!file.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return;
+            if (AssemblyInspector.Supports(file))
+            {
+                SwitchPage("assembly");
+                _ = AssemblyExplorerView.OpenAssemblyAsync(file);
+            }
+            else if (CodeStudioView.CanOpen(file))
+            {
+                CodeStudioView.OpenFile(file);
+                SwitchPage("editor");
+            }
         }
         catch (Exception ex) { StatusText.Text = ex.Message; }
     }
@@ -312,8 +329,8 @@ public partial class MainWindow : Window
         {
             Busy(true, "Exporting assets...");
             var result = await _engine.ExportAsync(_source, picker.FolderName, ids);
-            StatusText.Text = $"Exported {result.Count:N0} assets";
-            NoticeLabel.Text = $"Export completed to {picker.FolderName}. Warnings: {result.Warnings.Count}." +
+            StatusText.Text = result.Count > 0 ? $"Exported {result.Count:N0} assets" : "No decodable assets exported";
+            NoticeLabel.Text = $"Export report: {Path.Combine(picker.FolderName, "ZORA_EXPORT_REPORT.json")}. Warnings: {result.Warnings.Count}." +
                                (result.Warnings.Count > 0 ? " " + result.Warnings[0] : "");
         }
         catch (Exception ex) { StatusText.Text = "Export failed"; NoticeLabel.Text = ex.Message; }

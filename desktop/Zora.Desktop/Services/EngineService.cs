@@ -39,15 +39,27 @@ public sealed class EngineService
     public Task<ScanResult> ScanAsync(string path) => RunAsync<ScanResult>(["scan", "--source", path]);
     public Task<RecoverResult> RecoverAsync(string path, string destination) =>
         RunAsync<RecoverResult>(["recover", "--source", path, "--destination", destination]);
-    public Task<ExportResult> ExportAsync(string path, string destination, IEnumerable<string>? ids = null)
+    public async Task<ExportResult> ExportAsync(string path, string destination, IEnumerable<string>? ids = null)
     {
         List<string> args = ["export", "--source", path, "--destination", destination];
-        if (ids is not null)
+        string? tempSelection = null;
+        try
         {
-            var names = ids.ToArray();
-            if (names.Length == 0) throw new ArgumentException("No assets selected");
-            args.Add("--ids"); args.AddRange(names);
+            if (ids is not null)
+            {
+                var names = ids.ToArray();
+                if (names.Length == 0) throw new ArgumentException("No assets selected");
+                // The Windows CreateProcess command line is limited to ~32 KB.
+                // An ID manifest supports thousands of assets without truncation.
+                tempSelection = Path.Combine(Path.GetTempPath(), "ZoraSelection_" + Guid.NewGuid().ToString("N") + ".json");
+                await File.WriteAllTextAsync(tempSelection, JsonSerializer.Serialize(names));
+                args.Add("--ids-file"); args.Add(tempSelection);
+            }
+            return await RunAsync<ExportResult>(args);
         }
-        return RunAsync<ExportResult>(args);
+        finally
+        {
+            if (tempSelection is not null) try { File.Delete(tempSelection); } catch (IOException) { }
+        }
     }
 }

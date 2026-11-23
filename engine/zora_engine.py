@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import datetime
 import os
 import re
 import shutil
@@ -172,8 +173,12 @@ def export_object(obj, row: dict, out: Path) -> list[str]:
         exported.append(str(path))
     elif typ == 'AudioClip':
         for sample_name, sample_bytes in parsed.samples.items():
+            # UnityPy returns WAV, OGG or M4A depending on the original codec.
+            # Renaming OGG to .wav makes the file unplayable in some viewers.
             sample = clean_name(Path(sample_name).stem)
-            path = make_destination(out, 'AudioClip', base + '_' + sample + '.wav')
+            ext = Path(sample_name).suffix.lower()
+            if ext not in {'.wav', '.ogg', '.m4a', '.mp3'}: ext = '.bin'
+            path = make_destination(out, 'AudioClip', base + '_' + sample + ext)
             path.write_bytes(sample_bytes)
             exported.append(str(path))
     elif typ == 'TextAsset':
@@ -198,10 +203,10 @@ def export_object(obj, row: dict, out: Path) -> list[str]:
 def export_assets(input_path: str, destination: str, selected_ids: set[str] | None) -> dict:
     source, root, project = source_context(input_path)
     out = Path(destination).expanduser().resolve()
-    if out == root or root.is_relative_to(out):
-        raise ValueError('Export destination must not contain the source folder')
-    # Never walk an output directory nested inside the source tree.
-    if out.is_relative_to(root): raise ValueError('Export destination must be outside the source folder')
+    # For file imports, the user can safely export beside the source file.
+    # Only directory scans risk recursively scanning their own output.
+    if source.is_dir() and (out == source or out.is_relative_to(source)):
+        raise ValueError('Export destination must be outside the scanned source folder')
     out.mkdir(parents=True, exist_ok=True)
     exported, warnings = [], []
     for path, native in candidate_files(source, project):
@@ -231,8 +236,32 @@ def export_assets(input_path: str, destination: str, selected_ids: set[str] | No
                     if selected_ids is not None and row['id'] not in selected_ids: continue
                     if not row['exportable']: continue
                     try: exported.extend(export_object(obj, row, out / 'Extracted'))
-                    except Exception as exc: warnings.append(f"{row['name']}: {type(exc).__name__}: {str(exc)[:180]}")
+                    except Exception as exc:
+                        warnings.append(f"{row['name']}: {type(exc).__name__}: {str(exc)[:180]}")
+                        # A corrupt/unsupported decoder should not destroy the
+                        # rest of a batch. Preserve the original serialized bytes
+                        # as a clearly labelled fallback, where available.
+                        try:
+                            data = obj.get_raw_data()
+                            if data and len(data) <= 256 * 1024 * 1024:
+                                fallback = make_destination(out / 'Unconverted', 'RawUnity',
+                                    f"{Path(rel).stem}_{obj.path_id}_{clean_name(row['name'])}.bin")
+                                fallback.write_bytes(bytes(data))
+                                exported.append(str(fallback))
+                        except Exception as raw_exc:
+                            warnings.append(f"{row['name']}: raw fallback unavailable: {str(raw_exc)[:100]}")
             except Exception as exc: warnings.append(f'{rel}: {type(exc).__name__}: {str(exc)[:150]}')
+    if not exported and not warnings:
+        warnings.append('No matching exportable assets were found. For compiled .NET assemblies use DLL Explorer to inspect C# types and save decompiled sources.')
+    report = {
+        'generated_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        'source': str(Path(input_path).resolve()),
+        'files_exported': len(exported),
+        'warning_count': len(warnings),
+        'warnings': warnings[:500],
+        'files': [str(Path(x).relative_to(out)) for x in exported]
+    }
+    (out / 'ZORA_EXPORT_REPORT.json').write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding='utf-8')
     return {"exported": exported, "count": len(exported), "warnings": warnings[:200]}
 
 
@@ -266,8 +295,8 @@ def recover_project(input_path: str, destination: str) -> dict:
             if not any(name.startswith("assets/bin/Data/") for name in apk.namelist()):
                 raise ValueError("This APK is not a recognizable Unity build")
     out = Path(destination).expanduser().resolve()
-    if out == root or root.is_relative_to(out) or out.is_relative_to(root):
-        raise ValueError('Recovery destination must be outside the source directory')
+    if source.is_dir() and (out == source or out.is_relative_to(source)):
+        raise ValueError('Recovery destination must be outside the scanned source directory')
     name = clean_name(source.name if existing_project else "ZoraRecoveredProject")
     project = out / name
     if project.exists():
@@ -331,13 +360,20 @@ def main():
     p_export = sub.add_parser('export'); p_export.add_argument('--source', required=True)
     p_export.add_argument('--destination', required=True)
     p_export.add_argument('--ids', nargs='*', default=None)
+    p_export.add_argument('--ids-file', help='UTF-8 JSON array of selected asset IDs (for large selections)')
     p_recover = sub.add_parser('recover'); p_recover.add_argument('--source', required=True)
     p_recover.add_argument('--destination', required=True)
     args = parser.parse_args()
     try:
         if args.command == 'scan': value = scan(args.source)
         elif args.command == 'recover': value = recover_project(args.source, args.destination)
-        else: value = export_assets(args.source, args.destination, set(args.ids) if args.ids else None)
+        else:
+            ids = args.ids
+            if args.ids_file:
+                ids = json.loads(Path(args.ids_file).read_text(encoding='utf-8'))
+                if not isinstance(ids, list) or len(ids) > 50000 or any(not isinstance(x, str) for x in ids):
+                    raise ValueError('Selection file must contain an array of up to 50,000 asset IDs')
+            value = export_assets(args.source, args.destination, set(ids) if ids is not None else None)
         print(json.dumps(value, ensure_ascii=False))
     except Exception as exc:
         print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}))

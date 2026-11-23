@@ -6,6 +6,7 @@ on:
     tags: ['v*']
     paths:
       - 'desktop/**'
+      - 'tests/**'
       - 'shared/**'
       - 'updater/**'
       - 'engine/**'
@@ -58,6 +59,8 @@ jobs:
           }
       - name: Restore WPF packages
         run: dotnet restore desktop/Zora.Desktop/Zora.Desktop.csproj
+      - name: Test managed DLL browser and decompiler
+        run: dotnet run --project tests/Zora.ManagedSmoke/Zora.ManagedSmoke.csproj -c Release
       - name: Publish safe portable update helper
         run: dotnet publish updater/Zora.Updater/Zora.Updater.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o updater-publish
       - name: Publish native Windows app

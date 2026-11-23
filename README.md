@@ -1,6 +1,6 @@
 # ZORA
 
-### v0.5.1 Native UI readability update
+### v0.6.0 Native UI readability update
 
 - Fixes invisible text on white buttons by removing an implicit white `TextBlock` foreground override.
 - Uses a shared high-contrast text style for Asset Explorer and Zuro tables.
@@ -67,3 +67,20 @@ UnityPy and pefile have their own upstream licenses. No GPL AssetRipper code was
 - The Zuzify Discord bot has a private `/zora` command that queries Zora's Neon function with a dedicated service secret. The bot never receives the user's Zora license key.
 - Database tables are deployed in the Zora Neon `zora` database. See [Discord setup](docs/DISCORD.md) to configure the OAuth2 client secret and matching redirect URI. Until the environment variables are configured and the function redeployed, the Connect button will report that linking is unavailable.
 - Zora has the latest monochrome dropdown styling to avoid system-white filter lists on Windows.
+
+## DLL Explorer (.NET managed assemblies) — v0.6.0
+
+Zora now includes **DLL Explorer** (native WPF) to inspect managed .NET `.dll` and `.exe` files you are authorized to examine. Open the workspace's **DLL explorer** page, choose an assembly, expand namespaces and types, inspect methods/fields/properties, and export reconstructed C# per type. The view uses the ILSpy `ICSharpCode.Decompiler` library (MIT) and never loads or executes the DLL. `ZORA_DECOMPILE_REPORT.txt` lists successful files and per-type errors. For a project folder, double-clicking a local `.dll` or `.exe` will also open the decompiler.
+
+**Limits:** Native C++ PE files have no managed C# metadata; use the PE inspector instead. Obfuscated/unsupported assemblies may yield incomplete C#, and restored output is not the original source/project. Zora will not remove DRM, decrypt protected code, or promise lossless recreation.
+
+## Reliable export behavior — v0.6.0
+
+- Export a single APK / asset file into a sibling directory without being blocked by directory safety checks.
+- Handle large multi-select jobs using a temporary selection manifest rather than a Windows command line that can overflow.
+- Preserve an unknown Unity object as raw serialized `.bin` data when decoding fails (when the raw bytes are available), with a warning.
+- Keep the original audio format extension returned by UnityPy (e.g., `.ogg`, `.m4a`, `.wav`).
+- Do not overwrite existing extracted archive files on repeated exports; use numbered filenames.
+- `ZORA_EXPORT_REPORT.json` records counts, warnings and exported paths. Failed files should not cancel a batch.
+
+To test: `python -m unittest discover -s engine/tests -v` and on Windows `dotnet run --project tests/Zora.ManagedSmoke/Zora.ManagedSmoke.csproj -c Release`.
