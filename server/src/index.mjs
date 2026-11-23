@@ -24,6 +24,8 @@ const json = (res, status, payload) => {
 };
 const error = (status, code, message) => Object.assign(new Error(message), { status, code });
 async function body(req) {
+  // Vercel's Node runtime may already have decoded application/json bodies.
+  if (req.body !== undefined && req.body !== null) return req.body;
   let bytes = 0; const chunks = [];
   for await (const chunk of req) { bytes += chunk.length; if (bytes > 64000) throw error(413, 'too_large', 'Request body too large'); chunks.push(chunk); }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
@@ -85,7 +87,7 @@ async function refresh({ username, installationId, refreshToken }) {
   try {
     await c.query('BEGIN');
     const result = await c.query(`SELECT l.*,d.id AS device_id,d.refresh_hash FROM zora_licenses l
-      JOIN zora_devices d ON d.license_id=l.id WHERE l.username=$1 AND d.device_hash=$2 FOR UPDATE OF l,d`, [user, deviceHash]);
+      JOIN zora_devices d ON d.license_id=l.id WHERE l.username=$1 AND d.device_hash=$2 AND d.refresh_hash=$3 FOR UPDATE OF l,d`, [user, deviceHash, sha256(refreshToken)]);
     const l = result.rows[0];
     if (!l || !isActive(l) || !safeEqual(l.refresh_hash, sha256(refreshToken))) throw error(401, 'invalid_session', 'Please activate your license again');
     const nextToken = newRefresh();
@@ -128,7 +130,8 @@ async function createLicenses({ quantity = 1, maxDevices = 1, note = '' }) {
 async function handler(req, res) {
   try {
     const url = new URL(req.url, 'http://localhost');
-    const path = url.pathname;
+    const route = url.searchParams.get('route');
+    const path = route !== null ? '/' + route.replace(/^\/+/, '') : url.pathname;
     if (req.method === 'GET' && path === '/health') {
       await db.query('SELECT 1'); return json(res, 200, { ok: true, name: 'Zora', priceUsd: 25 });
     }
@@ -188,6 +191,9 @@ async function handler(req, res) {
     json(res, e.status || 500, { error: e.code || 'server_error', message: e.status ? e.message : 'Unexpected server error' });
   }
 }
-const host = process.env.HOST || '127.0.0.1';
-const port = Number(process.env.PORT || 8787);
-http.createServer(handler).listen(port, host, () => console.log(`Zora license API listening on ${host}:${port}`));
+export default handler;
+if (process.env.VERCEL !== '1') {
+  const host = process.env.HOST || '127.0.0.1';
+  const port = Number(process.env.PORT || 8787);
+  http.createServer(handler).listen(port, host, () => console.log(`Zora license API listening on ${host}:${port}`));
+}

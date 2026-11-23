@@ -6,7 +6,7 @@ The dedicated Neon project is named **Zora**, with database **zora** (PostgreSQL
 
 ## License API
 
-Deploy the `server` directory to a persistent Node.js 20+ hosting service using HTTPS and an internal/managed TLS terminator. Set these **server-only** secrets:
+Deploy the repository root as Vercel serverless functions (`api/index.mjs` and `vercel.json`) or deploy `server` to a Node.js 20+ host using HTTPS. The default API uses the Neon connection over TLS. Set these **server-only** secrets:
 
 - `DATABASE_URL` — copy from the Neon console or secret store (never put in desktop files)
 - `ZORA_KEY_PEPPER` — independently generated long random secret; changing it permanently invalidates stored key hashes and device IDs

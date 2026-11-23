@@ -3,7 +3,7 @@
 
 Zora is an independently developed desktop asset inspection/export app for Unity project folders and authorized compiled builds. Its interface is native C# / WPF (no Electron). It uses a bundled Python extractor based on [UnityPy](https://github.com/K0lb3/UnityPy) (MIT license). The licensing API runs on Node.js + Neon PostgreSQL; there is a separate owner-only command-line license console.
 
-> **Status: developer preview, not a finished commercial release.** Engine integrations and Windows builds must be validated against multiple real Unity versions. There is no payment checkout or hosted license endpoint yet. The public repository contains source code; keep production secrets in hosting environment variables, not in this repository.
+> **Status: developer preview, not a finished commercial release.** Engine integrations and Windows builds must be validated against multiple real Unity versions. There is no payment checkout yet; a hosted API deployment must be configured separately. The public repository contains source code; keep production secrets in hosting environment variables, not in this repository.
 
 ## Current feature scope
 
@@ -36,7 +36,7 @@ desktop/Zora.Desktop/      Native .NET 8 Windows WPF interface
 5. `python -m pip install -r engine/requirements.txt`; then `dotnet run --project desktop/Zora.Desktop`. Enter a username, the generated key, and the local API URL in the native app.
 6. Select an owned Unity project or build and export supported assets to a separate folder.
 
-The app calls the local Python script in a developer checkout. GitHub Actions packages it into `engine/zora-engine.exe` and builds a self-contained Windows release ZIP. API hosting must be configured separately.
+The app calls the local Python script in a developer checkout. GitHub Actions packages it into `engine/zora-engine.exe` and builds a self-contained Windows release ZIP. The repository includes a Vercel serverless entry at `api/index.mjs`; configure encrypted environment variables before deploying it.
 
 ## Price and commercial protection
 

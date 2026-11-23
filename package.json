@@ -1,0 +1,9 @@
+{
+  "name": "zora-cloud-api",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "engines": { "node": ">=20" },
+  "dependencies": { "pg": "^8.14.1" },
+  "scripts": { "test": "node --test server/test/*.test.mjs" }
+}
