@@ -3,8 +3,11 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    tags: ['v*']
     paths:
       - 'desktop/**'
+      - 'shared/**'
+      - 'updater/**'
       - 'engine/**'
       - 'server/**'
       - 'admin/**'
@@ -53,18 +56,23 @@ jobs:
           }
       - name: Restore WPF packages
         run: dotnet restore desktop/Zora.Desktop/Zora.Desktop.csproj
+      - name: Publish safe portable update helper
+        run: dotnet publish updater/Zora.Updater/Zora.Updater.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o updater-publish
       - name: Publish native Windows app
         run: dotnet publish desktop/Zora.Desktop/Zora.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
       - name: Publish owner-only console EXE
         run: dotnet publish admin/Zora.Admin/Zora.Admin.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o admin-publish
       - name: Package owner console
         shell: pwsh
-        run: Compress-Archive -Path admin-publish/* -DestinationPath ZoraAdmin-Windows-x64.zip -Force
+        run: |
+          Copy-Item updater-publish/ZoraUpdater.exe admin-publish/ZoraUpdater.exe
+          Compress-Archive -Path admin-publish/* -DestinationPath ZoraAdmin-Windows-x64.zip -Force
       - name: Include extraction engine
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path publish/engine | Out-Null
           Copy-Item engine/dist/zora-engine.exe publish/engine/zora-engine.exe
+          Copy-Item updater-publish/ZoraUpdater.exe publish/ZoraUpdater.exe
           Compress-Archive -Path publish/* -DestinationPath Zora-Windows-x64.zip -Force
       - uses: actions/upload-artifact@v4
         with:
@@ -76,3 +84,26 @@ jobs:
           name: ZoraAdmin-Windows-x64
           path: ZoraAdmin-Windows-x64.zip
           retention-days: 7
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [node-tests, windows-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Zora-Windows-x64
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: ZoraAdmin-Windows-x64
+          path: release
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/Zora-Windows-x64.zip
+            release/ZoraAdmin-Windows-x64.zip
+          generate_release_notes: true

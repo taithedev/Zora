@@ -1,3 +1,5 @@
 # UnityPy is MIT-licensed. Keep the minor version pinned pending compatibility testing.
 UnityPy==1.25.4
 pyinstaller>=6.16,<7
+
+pefile>=2023.2,<2028

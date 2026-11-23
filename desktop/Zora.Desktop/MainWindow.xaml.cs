@@ -12,12 +12,15 @@ using System.Windows.Media.Imaging;
 using System.Windows.Interop;
 using Zora.Desktop.Models;
 using Zora.Desktop.Services;
+using Zora.Updates;
 
 namespace Zora.Desktop;
 public partial class MainWindow : Window
 {
     private readonly EngineService _engine = new();
     private readonly LicenseService _license = new();
+    private readonly UpdateService _updates = new("Zora-Windows-x64.zip", "Zora.exe");
+    private bool _checkingUpdates;
     private readonly ObservableCollection<AssetRow> _assets = [];
     private string? _source;
     private bool _busy;
@@ -47,6 +50,7 @@ public partial class MainWindow : Window
         ActivationOverlay.Visibility = Visibility.Collapsed;
         WorkspaceRoot.Visibility = Visibility.Visible;
         StatusText.Text = "License verified · Ready";
+        _ = CheckUpdatesAsync(false);
     }
     private void KeyNext_Click(object sender, RoutedEventArgs e)
     {
@@ -123,8 +127,8 @@ public partial class MainWindow : Window
     private async void OpenBuild_Click(object sender, RoutedEventArgs e)
     {
         var picker = new OpenFileDialog {
-            Title = "Select Unity game EXE, APK, or serialized asset",
-            Filter = "Unity games and assets|*.exe;*.apk;*.assets;*.bundle;*.unity3d;*.assetbundle;*.ab|All files|*.*"
+            Title = "Select application, APK, DLL, archive or Unity assets",
+            Filter = "Apps and packages|*.exe;*.dll;*.apk;*.aab;*.jar;*.zip;*.msix;*.nupkg;*.assets;*.bundle;*.unity3d;*.assetbundle;*.ab|All files|*.*"
         };
         if (picker.ShowDialog() == true) await LoadAsync(picker.FileName);
     }
@@ -143,9 +147,11 @@ public partial class MainWindow : Window
             IndexedStat.Text = _assets.Count.ToString("N0");
             SourceStat.Text = Directory.Exists(source) && Directory.Exists(Path.Combine(source, "ProjectSettings")) ? "PROJECT" :
                 Path.GetExtension(source).Equals(".apk", StringComparison.OrdinalIgnoreCase) ? "APK" :
-                Path.GetExtension(source).Equals(".exe", StringComparison.OrdinalIgnoreCase) ? "EXE" : "ASSETS";
+                Path.GetExtension(source).Equals(".exe", StringComparison.OrdinalIgnoreCase) ? "EXE" :
+                Path.GetExtension(source).Equals(".dll", StringComparison.OrdinalIgnoreCase) ? "DLL" :
+                new[] { ".zip", ".jar", ".msix", ".aab", ".nupkg" }.Contains(Path.GetExtension(source).ToLowerInvariant()) ? "ARCHIVE" : "ASSETS";
             RefreshFilter();
-            NoticeLabel.Text = scan.Warnings.Count == 0 ? "Source indexed. Use EXPORT ALL for individual assets or RECOVER UNITY PROJECT for an importable project scaffold." :
+            NoticeLabel.Text = scan.Warnings.Count == 0 ? "Source indexed. EXPORT ALL saves readable assets; RECOVER UNITY PROJECT is available only for Unity projects/builds." :
                 $"{scan.Warnings.Count} files could not be parsed. {scan.Warnings[0]}";
             StatusText.Text = scan.Warnings.Count > 0 ? $"Indexed · {scan.Warnings.Count} warnings" : "Source indexed";
         }
@@ -172,6 +178,8 @@ public partial class MainWindow : Window
                 3 => asset.Type is "AudioClip" or "Audio",
                 4 => asset.Type is "TextAsset" or "MonoBehaviour" or "Shader" or "Source" or "Material/Data" or "Scene/Prefab",
                 5 => asset.Type is not ("Texture2D" or "Sprite" or "Texture" or "Mesh" or "Model" or "AudioClip" or "Audio" or "TextAsset" or "MonoBehaviour" or "Shader" or "Source" or "Material/Data" or "Scene/Prefab"),
+                6 => asset.Origin is "Archive" or "Executable",
+                7 => asset.Type == "PE Section",
                 _ => true
             };
         };
@@ -271,6 +279,36 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) { StatusText.Text = "Recovery failed"; NoticeLabel.Text = ex.Message; }
         finally { Busy(false); }
+    }
+    private async void CheckUpdates_Click(object sender, RoutedEventArgs e) => await CheckUpdatesAsync(true);
+    private async Task CheckUpdatesAsync(bool manual)
+    {
+        if (_checkingUpdates) return;
+        _checkingUpdates = true;
+        CheckUpdatesButton.IsEnabled = false;
+        try
+        {
+            if (manual) StatusText.Text = "Checking signed release metadata...";
+            var update = await _updates.CheckAndStageAsync();
+            if (update is null)
+            {
+                if (manual) StatusText.Text = "Zora is up to date";
+                return;
+            }
+            var answer = MessageBox.Show(this, $"Zora {update.Version} was downloaded and SHA-256 verified. Restart to install now?",
+                "Zora update ready", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            if (answer == MessageBoxResult.Yes)
+            {
+                _updates.ApplyAndRestart(update);
+                Close();
+            }
+            else StatusText.Text = $"Version {update.Version} staged. Use Check for updates to install.";
+        }
+        catch (Exception ex)
+        {
+            if (manual) MessageBox.Show(this, ex.Message, "Update unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        finally { _checkingUpdates = false; CheckUpdatesButton.IsEnabled = true; }
     }
     private void Busy(bool busy, string? message = null)
     {

@@ -6,15 +6,44 @@ import sys
 import tempfile
 import types
 import unittest
+import zipfile
+import struct
 
 sys.modules.setdefault('UnityPy', types.ModuleType('UnityPy'))
 mod_path = pathlib.Path(__file__).resolve().parents[1] / 'zora_engine.py'
+sys.path.insert(0, str(mod_path.parent))
 spec = importlib.util.spec_from_file_location('zora_engine', mod_path)
 engine = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(engine)
 
 
 class TestRecovery(unittest.TestCase):
+    def test_nonunity_windows_executable_is_inspected_not_recovered(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = pathlib.Path(temp)
+            exe = folder / 'Standalone.exe'
+            header = bytearray(256)
+            header[:2] = b'MZ'
+            struct.pack_into('<I', header, 0x3c, 0x80)
+            header[0x80:0x84] = b'PE\x00\x00'
+            struct.pack_into('<HHIIIHH', header, 0x84, 0x8664, 0, 0, 0, 0, 2, 0)
+            exe.write_bytes(header)
+            indexed = engine.scan(str(exe))
+            self.assertEqual(indexed['warnings'], [])
+            self.assertEqual(indexed['assets'][0]['type'], 'PE Report')
+            with self.assertRaisesRegex(ValueError, 'Not a Unity build'):
+                engine.recover_project(str(exe), str(folder / 'output'))
+
+    def test_nonunity_android_package_cannot_claim_unity_project(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = pathlib.Path(temp)
+            apk = folder / 'Standalone.apk'
+            with zipfile.ZipFile(apk, 'w') as archive:
+                archive.writestr('AndroidManifest.xml', b'placeholder')
+                archive.writestr('res/drawable/logo.png', b'placeholder')
+            with self.assertRaisesRegex(ValueError, 'not a recognizable Unity'):
+                engine.recover_project(str(apk), str(folder / 'output'))
+
     def test_original_project_meta_and_scripts(self):
         with tempfile.TemporaryDirectory() as temp:
             folder = pathlib.Path(temp)

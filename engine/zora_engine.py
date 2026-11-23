@@ -14,6 +14,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from inspectors import is_general_source, inspect_source, export_source, ARCHIVES
+
 try:
     import UnityPy
 except ImportError:
@@ -37,9 +39,9 @@ def source_context(value: str) -> tuple[Path, Path, bool]:
         raise ValueError("Source does not exist")
     if source.is_file() and source.suffix.lower() == ".exe":
         folder = source.with_name(source.stem + "_Data")
-        if not folder.is_dir():
-            raise ValueError("Unity game data folder not found next to the EXE")
-        return folder, folder, False
+        if folder.is_dir():
+            return folder, folder, False
+        return source, source.parent, False
     if source.is_file():
         return source, source.parent, False
     is_project = (source / "Assets").is_dir() and (source / "ProjectSettings").is_dir()
@@ -76,7 +78,7 @@ def candidate_files(source: Path, project: bool):
             if path.is_symlink() or path.suffix.lower() == '.meta': continue
             if project and "Assets" in path.relative_to(source).parts and "Library" not in path.relative_to(source).parts:
                 yield path, True
-            elif is_serialized(path):
+            elif is_serialized(path) or is_general_source(path):
                 yield path, False
 
 
@@ -121,6 +123,11 @@ def scan(input_path: str) -> dict:
                 assets.append(native_row(file_path, root))
             else:
                 rel = safe_relative(file_path, root)
+                if is_general_source(file_path):
+                    general_rows, general_warnings = inspect_source(file_path, root)
+                    assets.extend(general_rows[:max(0, MAX_ASSETS - len(assets))])
+                    warnings.extend(general_warnings[:max(0, 150 - len(warnings))])
+                    if file_path.suffix.lower() != ".apk": continue
                 _, objects = unity_objects(file_path)
                 for obj in objects:
                     assets.append(asset_row(rel, obj))
@@ -212,6 +219,11 @@ def export_assets(input_path: str, destination: str, selected_ids: set[str] | No
             except Exception as exc:
                 warnings.append(f'{rel}: {exc}')
         else:
+            if is_general_source(path):
+                general_files, general_warnings = export_source(path, root, out, selected_ids)
+                exported.extend(general_files)
+                warnings.extend(general_warnings)
+                if path.suffix.lower() != ".apk": continue
             try:
                 _, objects = unity_objects(path)
                 for obj in objects:
@@ -244,6 +256,15 @@ def detect_unity_version(source: Path, project: bool) -> str:
 
 def recover_project(input_path: str, destination: str) -> dict:
     source, root, existing_project = source_context(input_path)
+    if not existing_project and source.is_file() and source.suffix.lower() == ".exe":
+        raise ValueError("Not a Unity build: a matching *_Data folder is required to recover a Unity project")
+    if not existing_project and source.is_file() and source.suffix.lower() in ARCHIVES - {".apk"}:
+        raise ValueError("Cannot create a Unity project from a non-Unity archive")
+    if not existing_project and source.is_file() and source.suffix.lower() == ".apk":
+        import zipfile
+        with zipfile.ZipFile(source) as apk:
+            if not any(name.startswith("assets/bin/Data/") for name in apk.namelist()):
+                raise ValueError("This APK is not a recognizable Unity build")
     out = Path(destination).expanduser().resolve()
     if out == root or root.is_relative_to(out) or out.is_relative_to(root):
         raise ValueError('Recovery destination must be outside the source directory')

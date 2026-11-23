@@ -1,44 +1,42 @@
-# ZORA — Native Unity Recovery Studio
+# ZORA — Native Application & Unity Asset Studio
 
-**Version:** 0.3.0 developer preview · **Planned price:** $25 per license · **Windows 10/11 x64** · Native .NET 8 WPF and native Windows owner CLI (no Electron).
+**Version:** 0.4.0 developer preview · **Target price:** $25 per license · **Platform:** Windows 10/11 x64 · Native .NET 8 WPF, black-and-white square-cornered OLED theme. No Electron.
 
-Zora has a strict black-and-white, square-cornered OLED desktop design. The client launches into a centered license-key entry, then requests a username, and opens its asset inspection workspace only after activation. The public application contains neither database credentials nor owner credentials.
+Zora starts with the centered license-key screen, then requests a username. All licensing and owner actions run against the deployed Neon Function; clients never receive Neon database credentials.
 
-## Asset import and recovery
+## New in v0.4
 
-- Open complete Unity project directories with `Assets` and `ProjectSettings`. Copy source `.cs`, `.meta`, scenes, prefabs, and matching settings if available.
-- Open compiled Unity Windows `.exe` games with their nearby `<Game>_Data` folder, Unity `.apk` files, and supported asset bundles.
-- Search, filter, preview and export UnityPy-compatible textures/sprites (PNG), meshes (OBJ), audio samples (WAV), text assets, fonts, and supported JSON metadata.
-- Best-effort **Recover Unity project** output: Unity Hub-importable folder scaffold with recoverable assets, `ProjectSettings`, `Packages`, and `RECOVERY_REPORT.json`.
+- **Automatic release updates:** Once signed in, Zora checks the latest *published* GitHub Release, downloads a newer Zora-Windows-x64.zip, verifies its GitHub-reported SHA-256 digest and offers to restart to install. Also available from the sidebar. Files are only replaced after Zora exits; the separate native ZoraUpdater.exe performs the update. It never bypasses Windows permissions or requires hidden elevation.
+- **Owner console update + live sync:** ZoraAdmin.exe checks its own newer signed release when opened and offers restart/update; command 50 refreshes live Neon health and license statistics, and command 51 manually checks updates.
+- **Reliable real license generation:** The owner console generates one or up to 500 keys through the existing authenticated Neon endpoint, confirms key format, saves one-time plaintext keys into a *new private JSON file*, and displays a single new key for copying. Password-only owner login and revocable sessions remain in place. Keys are real database records, not random strings that the desktop app cannot activate.
+- **Broader file support:** Read unencrypted APK/AAB/JAR/ZIP/MSIX/NuGet archives, inspect Windows EXE/DLL/OCX/SYS PE headers and sections, read optional PE imports/exports/resource tables, export ordinary PE resources and ZIP-contained files, and inspect Unity projects, Unity EXEs, Unity APKs and Unity bundles.
+- **Safer exports:** Reject archive path traversal, symlink entries, encrypted ZIP entries and oversized extraction; never overwrite existing files when extracting ordinary archives.
+- **Unified workspace:** The same asset explorer, filters and selection/export UI work for Unity assets, ZIP contents and Windows application resources.
 
-**Important:** Compiled builds do not contain a complete original Unity Editor project. Zora cannot guarantee C# source, prefab hierarchies, full scene reconstruction, materials/shaders, meshes/rigs, or any protected/encrypted assets. Do not use it to bypass DRM, and only work with assets you own or have permission to extract.
+**Important distinction:** This is a read-only inspection and asset/resource-export tool, not a DRM or license cracker. It does not bypass paid-application activation, encryption, anti-tamper or access controls; compiled code generally cannot be reconstructed into the original source project. Use it with applications and assets you own or are authorized to inspect.
 
-## Owner Console — 49 commands, one password
+## Usage
 
-`ZoraAdmin.exe` displays only `Owner password:` on first launch. No username, no API address, no owner API token, no Neon connection string. The password is **stored in Neon only as a salted scrypt hash**; it is verified over HTTPS by the deployed Neon Function. After login, it grants an 8-hour revocable owner session held only in app memory.
+1. Launch `Zora.exe` alongside `engine/zora-engine.exe` and `ZoraUpdater.exe`; paste your activated Zora license key and choose a username.
+2. Drop a supported source or choose **Open app / archive**. Unity project folders can also be opened directly.
+3. Filter and search. **Export selected** or **Export all** saves individual readable assets and ordinary application resources to a chosen output directory.
+4. **Recover Unity project** is only valid for a Unity project folder or a recognizable compiled Unity build. It produces an editable scaffold and `RECOVERY_REPORT.json`, never a guaranteed copy of the original source.
+5. **Check for updates** is automatic after activation, or manual from the sidebar. Only `v*` tag GitHub Releases published with `Zora-Windows-x64.zip` and its SHA-256 `digest` are installable; GitHub Actions on `main` alone does not create a release.
 
-The owner console includes these 49 commands:
+## Owner console
 
-1. Overview; 2. All licenses; 3. Search; 4. License details; 5. Generate one; 6. Generate bulk (up to 500); 7. Active; 8. Banned; 9. Revoked; 10. Unactivated; 11. Activated; 12. Inactive 30+ days; 13. Expiring 30 days; 14. Expired; 15. Created in 24h; 16. Activated in 24h.
-2. Ban, unban, revoke; reset devices; change max devices; edit/clear notes; set/clear/extend expiration; rename or clear usernames; inspect/remove devices; bulk status updates (up to 100); audit history and audit filters; daily activity breakdown.
-3. Paginated CSV and JSON exports for licenses and audit logs; owner security status; live sessions; revoke other/all owner sessions; change owner password; Neon health check; logout; re-login; help and exit.
+`ZoraAdmin.exe` asks only for the owner password, which is verified via Neon. It includes 49 previous controls (license issuing, bans, activation limits, usernames, expirations, exports, audit logs, owner security) plus **50 Sync Neon** and **51 Check / install update**. The owner app ships with `ZoraUpdater.exe` beside it. For one license, the new key is displayed; for bulk, keys are saved in private JSON. The password and API credentials are not embedded into the binaries.
 
-All commands are implemented against server-side Neon SQL endpoints. The server never returns plaintext license keys after their initial generation; only masked labels, metadata, devices, and audit records. Generated key batches are saved to a **new local private file**; the console avoids overwriting existing files. Each licensing action is recorded in the audit trail. License counts × $25 are *not* verified revenue.
+> A license grant is not a payment receipt. Checkout and revenue verification are still to be built. Changing the server-side HMAC pepper invalidates previous licenses; **never rotate it during an ordinary Zora update.**
 
-## Why a Neon Function is still required
+## Deployment and releases
 
-The owner EXE does **not** directly connect to Neon Postgres: shipping database credentials inside any distributed EXE would expose every paid license and customer. The HTTPS endpoint runs **inside Neon** as a Neon Function, not as a separate license server process. Owner passwords and session hashes live in the `zora` database; all SQL is performed inside the managed function.
+- Neon database: project `Zora`, PostgreSQL 18, database `zora`.
+- Managed HTTPS function: slug `zoralicense` (the existing one; no new independent license server).
+- Build and unit tests: `.github/workflows/windows-build.yml` runs Node tests, Python tests, and publishes Windows app, updater and console.
+- Release publishing: push a tested version tag such as `v0.4.0` to trigger the workflow and publish both portable ZIPs to GitHub Releases. Future versions with higher semantic versions can update from that feed.
+- To run locally: `python -m pip install -r engine/requirements.txt`, `cd server && npm test`, `python -m unittest discover -s engine/tests -v`, and `dotnet run --project desktop/Zora.Desktop` on Windows with the .NET 8 SDK.
 
-- Neon project: `Zora` / database `zora` / Postgres 18.
-- Function slug: `zoralicense`.
-- The old `ZORA_ADMIN_TOKEN` is **not accepted** for owner access as of v0.3.
-- App users still sign in with their license key and a username; the owner signs in with **only their owner password**.
-- Password login has salted scrypt hashing, failed-login lockout, owner-session expiry and revocation, password rotation, and an audit trail.
+See [deployment details](docs/DEPLOY.md). The project is still a developer preview, so automated tests cannot substitute for testing with actual EXEs/APKs and Windows installation locations.
 
-**Deployment status:** The Neon schema for owner auth has been applied, but the owner password must still be initialized and this new function version must be deployed and smoke-tested before password login works live. See [`docs/DEPLOY.md`](docs/DEPLOY.md). Never put the owner password, database URL, secret keys, or server tokens into GitHub.
-
-## Build and testing
-
-Run `cd server && npm test` for password/crypto tests, `python -m unittest discover -s engine/tests -v` for recovery tests, and the GitHub Actions workflow for Windows builds. The native owner console builds from `admin/Zora.Admin/` and is independent of the desktop client.
-
-Payment checkout is **not** integrated. No real revenue is recorded by license generation, and this is not yet a verified commercial release. Upstream UnityPy is MIT licensed; AssetRipper GPL source is not included in Zora.
+UnityPy and pefile have their own upstream licenses. No GPL AssetRipper code was copied into this repository.

@@ -33,13 +33,14 @@
             <StackPanel Grid.Row="1">
               <Button Content="▣     Asset explorer" Style="{StaticResource SidebarButton}" Background="#222222" Click="Explorer_Click" Margin="0,0,0,5"/>
               <Button Content="◫     Open project" Style="{StaticResource SidebarButton}" Click="OpenProject_Click" Margin="0,0,0,5"/>
-              <Button Content="▤     Open EXE / APK" Style="{StaticResource SidebarButton}" Click="OpenBuild_Click" Margin="0,0,0,5"/>
+              <Button Content="▤     Open app / archive" Style="{StaticResource SidebarButton}" Click="OpenBuild_Click" Margin="0,0,0,5"/>
               <Button x:Name="RecoverButton" Content="↓     Recover project" Style="{StaticResource SidebarButton}" Click="RecoverProject_Click" Margin="0,0,0,5"/>
+              <Button x:Name="CheckUpdatesButton" Content="↻     Check for updates" Style="{StaticResource SidebarButton}" Click="CheckUpdates_Click" Margin="0,0,0,5"/>
             </StackPanel>
             <StackPanel Grid.Row="3" Margin="14,10,8,0">
               <TextBlock Text="SIGNED IN" Foreground="{StaticResource SubText}" FontSize="10" Margin="0,0,0,8"/>
               <TextBlock x:Name="AccountLabel" Text="Not activated" FontWeight="SemiBold" FontSize="14"/>
-              <TextBlock Text="ZORA  /  0.2.0" Foreground="#6E6E6E" FontSize="10" Margin="0,15,0,0"/>
+              <TextBlock Text="ZORA  /  0.4.0" Foreground="#6E6E6E" FontSize="10" Margin="0,15,0,0"/>
             </StackPanel>
           </Grid>
         </Border>
@@ -49,7 +50,7 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0">
               <TextBlock Text="Your assets." FontSize="34" FontWeight="SemiBold"/>
-              <TextBlock Text="Explore, inspect, export, and reconstruct Unity content." FontSize="12" Foreground="{StaticResource SubText}" Margin="0,9,0,0"/>
+              <TextBlock Text="Inspect Unity builds, Windows programs and Android packages." FontSize="12" Foreground="{StaticResource SubText}" Margin="0,9,0,0"/>
             </StackPanel>
             <TextBlock Grid.Column="1" Text="LOCAL PROCESSING" Foreground="#B5B5B5" FontSize="10" VerticalAlignment="Center"/>
           </Grid>
@@ -71,7 +72,7 @@
               <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="168"/></Grid.ColumnDefinitions>
               <TextBox x:Name="SearchBox" Grid.Column="0" TextChanged="Search_Changed" ToolTip="Search by name, type, and path" Margin="0,0,8,0"/>
               <ComboBox x:Name="TypeFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="Filter_Changed">
-                <ComboBoxItem Content="All assets"/><ComboBoxItem Content="Textures"/><ComboBoxItem Content="Meshes / models"/><ComboBoxItem Content="Audio"/><ComboBoxItem Content="Scripts / data"/><ComboBoxItem Content="Other"/>
+                <ComboBoxItem Content="All assets"/><ComboBoxItem Content="Textures"/><ComboBoxItem Content="Meshes / models"/><ComboBoxItem Content="Audio"/><ComboBoxItem Content="Scripts / data"/><ComboBoxItem Content="Other"/><ComboBoxItem Content="App resources"/><ComboBoxItem Content="PE sections"/>
               </ComboBox>
             </Grid>
             <TextBlock Grid.Row="2" x:Name="SourceLabel" Text="Drop an EXE, APK, asset file, or project folder anywhere in Zora." FontSize="11" Foreground="{StaticResource SubText}" TextTrimming="CharacterEllipsis" Margin="0,12,0,0"/>

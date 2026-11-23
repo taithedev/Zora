@@ -2,6 +2,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Zora.Updates;
 
 namespace Zora.Admin;
 
@@ -11,6 +13,7 @@ internal static class Program
     private const string DefaultEndpoint = "https://br-frosty-bar-bbmdnhr7-zoralicense.compute.c-15.us-east-1.aws.neon.tech";
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(35) };
     private static readonly JsonSerializerOptions Pretty = new() { WriteIndented = true };
+    private static readonly UpdateService Updates = new("ZoraAdmin-Windows-x64.zip", "ZoraAdmin.exe");
     private static string _baseUrl = DefaultEndpoint;
     private static string _accessToken = "";
     private static DateTimeOffset _expires;
@@ -32,6 +35,7 @@ internal static class Program
         Title();
         Console.WriteLine("  Enter your owner password to unlock Neon administration.\n");
         if (!await SignIn()) return 1;
+        await CheckForUpdates(false);
         await Dashboard();
         Help();
         while (true)
@@ -97,6 +101,8 @@ internal static class Program
                     case 47: await Logout(); break;
                     case 48: await SignIn(); break;
                     case 49: Help(); break;
+                    case 50: await SyncNeon(); break;
+                    case 51: await CheckForUpdates(true); break;
                     default: WriteError("Unknown command. Type help."); break;
                 }
             }
@@ -138,6 +144,7 @@ internal static class Program
         Console.WriteLine("  36  Activity 14d  37  Licenses CSV     45  New password    46  Neon health");
         Console.WriteLine("  38  Licenses JSON 39  Audit CSV        47  Logout          48  Login");
         Console.WriteLine("  40  Audit JSON    49  Help             00  Quit");
+        Console.WriteLine("  50  Sync Neon     51  Check / install console update");
     }
     private static async Task<bool> SignIn()
     {
@@ -174,7 +181,7 @@ internal static class Program
     private static async Task<JsonElement> Api(string path, HttpMethod method, object? value = null, bool authenticated = true)
     {
         using var request = new HttpRequestMessage(method, _baseUrl + path);
-        request.Headers.UserAgent.ParseAdd("ZoraAdmin/0.3");
+        request.Headers.UserAgent.ParseAdd("ZoraAdmin/0.4");
         if (authenticated)
         {
             if (string.IsNullOrEmpty(_accessToken)) throw new InvalidOperationException("Not signed in. Use 48 to enter your owner password.");
@@ -274,19 +281,38 @@ internal static class Program
     }
     private static async Task GenerateKeys(bool bulk)
     {
-        var quantity = bulk ? Number("How many keys",1,500,25) : 1;
-        var maxDevices = Number("Devices per license",1,5,1);
+        var quantity = bulk ? Number("How many keys", 1, 500, 25) : 1;
+        var maxDevices = Number("Devices per license", 1, 5, 1);
         var note = Prompt("Optional internal note");
-        if (!Confirm($"Generate {quantity} license(s)")) return;
+        var name = Prompt("Save keys to new private JSON file", $"Zora-Keys-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json");
+        var destination = CreateNewFile(name);
+        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        // Test destination before generating any unrecoverable plaintext keys.
+        using (new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { }
+        File.Delete(destination);
+        if (!Confirm($"Generate {quantity} verified Neon-backed license(s)")) return;
         var result = await Api("/v1/admin/licenses/bulk", HttpMethod.Post, new { quantity, maxDevices, note });
         var keys = result.GetProperty("licenses").EnumerateArray().Select(x => x.Clone()).ToArray();
-        Console.WriteLine($"  Generated {keys.Length} cryptographic license keys.");
-        var name = Prompt("Save to new private JSON file", $"Zora-Keys-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json");
-        if (name.Length == 0) throw new InvalidOperationException("A filename is required to avoid losing generated keys.");
+        if (keys.Length != quantity || keys.Any(x => !Regex.IsMatch(Field(x, "key"), @"^ZORA-(?:[A-HJ-NP-Z2-9]{5}-){4}[A-HJ-NP-Z2-9]{5}$")))
+            throw new InvalidOperationException("The licensing API returned an invalid key batch. Contact the owner before continuing.");
         var data = JsonSerializer.Serialize(new { createdAt = DateTimeOffset.UtcNow, priceUsd = 25, licenses = keys }, Pretty);
-        using (var stream = new FileStream(CreateNewFile(name), FileMode.CreateNew, FileAccess.Write, FileShare.None))
-        using (var writer = new StreamWriter(stream, Encoding.UTF8)) await writer.WriteAsync(data);
-        Console.WriteLine("  Saved once. The server cannot recover plaintext keys later.");
+        try
+        {
+            await File.WriteAllTextAsync(destination, data);
+        }
+        catch
+        {
+            // Preserve the one-time response if the requested location becomes unavailable.
+            var fallback = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Zora", "owner", $"keys-recovery-{Guid.NewGuid():N}.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(fallback)!);
+            await File.WriteAllTextAsync(fallback, data);
+            Console.WriteLine("  Preferred destination unavailable. Secure key backup: " + fallback);
+            return;
+        }
+        Console.WriteLine($"  {quantity} working license record(s) created in Neon and saved to {destination}.");
+        if (quantity == 1) Console.WriteLine("  NEW KEY: " + Field(keys[0], "key"));
+        Console.WriteLine("  Keep this JSON private. Plaintext license keys are never stored by Neon.");
     }
     // Reserve a unique filename without overwriting any existing owner's keys.
     private static string CreateNewFile(string name)
@@ -472,6 +498,37 @@ internal static class Program
     {
         var result = await Api("/health",HttpMethod.Get,authenticated:false);
         Show(result,"ok","name","priceUsd");
+    }
+    private static async Task SyncNeon()
+    {
+        Console.WriteLine("\n  SYNCING / LIVE NEON STATE");
+        var health = await Api("/health", HttpMethod.Get, authenticated: false);
+        if (Field(health, "ok") != "True" && Field(health, "ok") != "true")
+            throw new InvalidOperationException("Neon health check failed.");
+        var status = await Api("/v1/admin/stats", HttpMethod.Get);
+        Console.WriteLine($"  Connected. {Field(status, "total")} issued licenses, {Field(status, "activated")} activated, {Field(status, "banned")} banned.");
+        Console.WriteLine("  License creations and bans are already synchronized to Neon immediately.");
+    }
+    private static async Task CheckForUpdates(bool manual)
+    {
+        try
+        {
+            if (manual) Console.WriteLine("  Checking official Zora GitHub releases...");
+            var release = await Updates.CheckAndStageAsync();
+            if (release == null)
+            {
+                if (manual) Console.WriteLine("  Owner console is up to date.");
+                return;
+            }
+            Console.Write($"  Zora Owner Console v{release.Version} is ready (SHA-256 verified). Restart to install? [y/N]: ");
+            if (!string.Equals(Console.ReadLine()?.Trim(), "y", StringComparison.OrdinalIgnoreCase)) return;
+            Updates.ApplyAndRestart(release);
+            Environment.Exit(0);
+        }
+        catch (Exception ex)
+        {
+            if (manual) WriteError("Update check: " + ex.Message);
+        }
     }
     private static async Task Logout()
     {

@@ -46,3 +46,9 @@ Use `ZoraAdmin.exe`. Enter your owner password and type `help` to view the 49 me
 ### Verification before public sales
 
 Run server unit tests, Windows build, and live owner login tests. Confirm old API admin-token access fails, owner password rotation revokes sessions, and banned keys cannot refresh. Test each Unity EXE/APK importer and recovery outputs against owned Unity projects. A $25 payment checkout that verifies successful transactions server-side has **not** been integrated; do not treat generated keys as paid purchases.
+
+## v0.4 updater and broad inspector
+
+The Windows release bundles `ZoraUpdater.exe` beside the desktop app and owner console. Updates use `https://api.github.com/repos/taithedev/Zora/releases/latest` with SHA-256 digest verification, and are only offered for newer `v*` releases. Source-only commits and CI artifacts are **not** installable updates. Push a tested version tag to publish a release; see `docs/RELEASES.md`.
+
+App inspection beyond Unity supports ordinary ZIP-family packages (APK/AAB/JAR/MSIX/NuGet), Windows PE headers and sections, and optional resources via `pefile`. Protected apps are not unlocked, and compiled applications cannot generally be turned into their exact original projects. No changes to the existing Neon function or password schema are required for v0.4; the same owner account and keys remain valid.

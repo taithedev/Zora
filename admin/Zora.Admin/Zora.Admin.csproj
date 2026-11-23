@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <AssemblyName>ZoraAdmin</AssemblyName>
     <RootNamespace>Zora.Admin</RootNamespace>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../shared/UpdateService.cs" Link="Services/UpdateService.cs" />
+  </ItemGroup>
 </Project>
