@@ -4,11 +4,17 @@
 
 Neon project **Zora** (`dark-truth-55449043`) uses database **zora** in US East, PostgreSQL 18. Tables `zora_licenses`, `zora_devices`, and `zora_audit` already exist. Do **not** rerun destructive migration SQL. Source: `server/schema.sql`.
 
+## Deployed Neon Function
+
+Neon reports the `zoralicense` function deployment as complete, with invocation URL `https://br-frosty-bar-bbmdnhr7-zoralicense.compute.c-15.us-east-1.aws.neon.tech/`. The private environment contains `ZORA_KEY_PEPPER`, `ZORA_SESSION_SECRET`, `ZORA_ADMIN_TOKEN`, and `ZORA_CLOUD_FUNCTION=1`. Neon injects `DATABASE_URL`. The function code builds through `.github/workflows/neon-function-bundle.yml`. End-to-end login smoke tests remain to be run before public sales.
+
 ## Hosting-free activation architecture
 
 The Windows app never talks directly to Postgres. Instead it calls one HTTPS **Neon Function** deployed in the same Neon project: `functions/license/index.mjs`. Neon automatically injects the Postgres connection URL on the function's branch. There is no separately managed API server or activation URL textbox in the app.
 
 The entrypoint imports `server/src/index.mjs` with an HTTP adapter. Bundle using Neon CLI, which includes dependencies (`pg`) and transitive imports:
+
+For subsequent deployments:
 
 1. From the repository root, install Neon CLI and link the existing Zora project/branch.
 2. Deploy slug `zoralicense` with entrypoint `functions/license/index.mjs` and Node.js 24; have the function environment define `ZORA_CLOUD_FUNCTION=1`.

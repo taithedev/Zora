@@ -28,7 +28,7 @@ public sealed class LicenseService
     // Public endpoint only. Neon connection credentials never enter desktop builds.
     // Release builds inject ZORA_PUBLIC_LICENSE_URL at build time; local
     // developer builds may use ZORA_API_URL in the environment.
-    private const string ReleaseEndpoint = "__ZORA_PUBLIC_LICENSE_URL__";
+    private const string ReleaseEndpoint = "https://br-frosty-bar-bbmdnhr7-zoralicense.compute.c-15.us-east-1.aws.neon.tech/";
     private string ApiUrl => (Environment.GetEnvironmentVariable("ZORA_API_URL") ??
         (ReleaseEndpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? ReleaseEndpoint : "")).TrimEnd('/');
     public string Username => _settings.Username;

@@ -20,9 +20,9 @@ A strict black/white OLED desktop app with square controls, no ornamental outlin
 Zora uses a **Neon Function** for secure activation and database queries. This is not a separately hosted license-server process; the function runs inside the Neon project and exposes a public HTTPS URL. Keeping all secret signing keys and database credentials in this trusted runtime is necessary: a distributable desktop EXE cannot safely connect to Postgres using privileged credentials. The desktop receives only a short-lived signed access token plus a refresh token protected by Windows DPAPI. No native DRM is unbreakable.
 
 - The Neon project and the licensing tables already exist.
-- **The Neon Function is source-ready but not yet deployed or configured with its secrets.** A build without the function's published HTTPS URL cannot activate; this is intentional, not a stubbed login.
+- **The Neon Function has been deployed to the Zora project with server-only secrets.** Its active deployment is reported complete by Neon. Live desktop activation and end-to-end HTTPS connectivity still need smoke testing.
 - The repository includes source for the Neon Function in `functions/license/index.mjs` and server-side licensing logic under `server/` (reused inside the function, not a Windows GUI or separate host).
-- Set the repository Actions variable `ZORA_PUBLIC_LICENSE_URL` to the live Neon Function invocation URL before building. It is inserted as a *public URL only* during CI. In local developer runs, environment variable `ZORA_API_URL` can override it for testing.
+- The desktop source embeds the public function URL `https://br-frosty-bar-bbmdnhr7-zoralicense.compute.c-15.us-east-1.aws.neon.tech/`. The repository Actions variable `ZORA_PUBLIC_LICENSE_URL` may override the URL at build time; in local developer runs, environment variable `ZORA_API_URL` can override it for testing. No secrets are in the EXE.
 
 ## Running and packaging
 

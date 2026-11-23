@@ -19,7 +19,7 @@ export default {
       catch { return Response.json({ error: 'invalid_json', message: 'Invalid JSON' }, { status: 400 }); }
     }
     const req = { method: request.method, url: uri.pathname + uri.search, headers, body,
-      socket: { remoteAddress: request.headers.get('x-real-ip') || 'unknown' } };
+      socket: { remoteAddress: request.headers.get('x-real-ip') || request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown' } };
     let code = 500, replyHeaders = {}, data = '';
     const res = {
       writeHead(status, h) { code = status; replyHeaders = h; },

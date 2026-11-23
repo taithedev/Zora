@@ -44,7 +44,10 @@ jobs:
           if (-not [string]::IsNullOrWhiteSpace($env:ZORA_PUBLIC_LICENSE_URL)) {
             if (-not $env:ZORA_PUBLIC_LICENSE_URL.StartsWith("https://")) { throw "Activation endpoint must use HTTPS" }
             $path = "desktop/Zora.Desktop/Services/LicenseService.cs"
-            (Get-Content -Path $path -Raw).Replace("__ZORA_PUBLIC_LICENSE_URL__", $env:ZORA_PUBLIC_LICENSE_URL.TrimEnd('/')) | Set-Content -Path $path -Encoding utf8
+            $source = Get-Content -Path $path -Raw
+            $escapedUrl = $env:ZORA_PUBLIC_LICENSE_URL.TrimEnd('/').Replace('"', '')
+            $source = [regex]::Replace($source, 'private const string ReleaseEndpoint = "[^"]*";', "private const string ReleaseEndpoint = `"$escapedUrl`";")
+            Set-Content -Path $path -Value $source -Encoding utf8
           } else {
             Write-Host "No ZORA_PUBLIC_LICENSE_URL configured; build will show activation unavailable until deployed."
           }
