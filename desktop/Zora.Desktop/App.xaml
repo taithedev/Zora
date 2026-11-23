@@ -33,7 +33,7 @@
             <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"
                     CornerRadius="11" SnapsToDevicePixels="True" RenderTransformOrigin="0.5,0.5">
               <Border.RenderTransform><ScaleTransform x:Name="ButtonScale" ScaleX="1" ScaleY="1"/></Border.RenderTransform>
-              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" TextElement.Foreground="{TemplateBinding Foreground}"/>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
@@ -68,7 +68,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <Border x:Name="SideSurface" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="11">
-              <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+              <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="SideSurface" Property="Background" Value="#202020"/></Trigger>
@@ -123,11 +123,54 @@
       <Setter Property="CaretBrush" Value="White"/>
       <Setter Property="BorderThickness" Value="0"/>
     </Style>
-    <Style TargetType="ComboBox">
+    <!-- Native WPF ComboBox uses a white Win32 popup by default on some PCs.
+         Replace the template so the selector and drop-down stay monochrome. -->
+    <Style TargetType="ComboBoxItem">
+      <Setter Property="Background" Value="#151515"/>
       <Setter Property="Foreground" Value="White"/>
+      <Setter Property="Padding" Value="12,9"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Template">
+        <Setter.Value><ControlTemplate TargetType="ComboBoxItem">
+          <Border x:Name="ItemSurface" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="6">
+            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="#303030"/></Trigger>
+            <Trigger Property="IsSelected" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="#242424"/></Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="ComboBox">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
       <Setter Property="Background" Value="#161616"/>
       <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Padding" Value="10,10"/>
+      <Setter Property="Padding" Value="13,12"/>
+      <Setter Property="Template">
+        <Setter.Value><ControlTemplate TargetType="ComboBox">
+          <Grid>
+            <ToggleButton x:Name="DropToggle" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Focusable="False">
+              <ToggleButton.Template>
+                <ControlTemplate TargetType="ToggleButton">
+                  <Border Background="#161616" CornerRadius="10" Padding="14,11">
+                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                      <ContentPresenter Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}" VerticalAlignment="Center" TextElement.Foreground="White"/>
+                      <Path Grid.Column="1" Data="M 0 0 L 4 4 L 8 0" Stroke="#B0B0B0" StrokeThickness="1.3" Margin="12,0,2,0" VerticalAlignment="Center"/>
+                    </Grid>
+                  </Border>
+                </ControlTemplate>
+              </ToggleButton.Template>
+            </ToggleButton>
+            <Popup x:Name="PART_Popup" Placement="Bottom" PlacementTarget="{Binding ElementName=DropToggle}"
+                   IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" AllowsTransparency="True" Focusable="False" StaysOpen="False">
+              <Border Background="#161616" CornerRadius="10" MinWidth="{Binding ActualWidth, ElementName=DropToggle}" Padding="5" Margin="0,5,0,0">
+                <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer>
+              </Border>
+            </Popup>
+          </Grid>
+        </ControlTemplate></Setter.Value>
+      </Setter>
     </Style>
     <Style TargetType="DataGrid">
       <Setter Property="Background" Value="Black"/>

@@ -37,6 +37,7 @@
               <Button Content="▤     Open app / archive" Style="{StaticResource SidebarButton}" Click="OpenBuild_Click" Margin="0,0,0,5"/>
               <Button x:Name="RecoverButton" Content="↓     Recover project" Style="{StaticResource SidebarButton}" Click="RecoverProject_Click" Margin="0,0,0,5"/>
               <Button Content="⌘     Code studio" Style="{StaticResource SidebarButton}" Click="CodeStudio_Click" Margin="0,0,0,5"/>
+              <Button Content="◈     Discord sync" Style="{StaticResource SidebarButton}" Click="Discord_Click" Margin="0,0,0,5"/>
               <Button Content="◆     Zuro · owner" Style="{StaticResource SidebarButton}" Click="Zuro_Click" Margin="0,0,0,5"/>
               <Button x:Name="CheckUpdatesButton" Content="↻     Check for updates" Style="{StaticResource SidebarButton}" Click="CheckUpdates_Click" Margin="0,0,0,5"/>
             </StackPanel>
@@ -121,6 +122,7 @@
         </Grid>
         <views:CodeWorkbench x:Name="CodeStudioView" Grid.Column="1" Grid.ColumnSpan="2" Visibility="Collapsed"/>
         <views:ZuroPanel x:Name="ZuroView" Grid.Column="1" Grid.ColumnSpan="2" Visibility="Collapsed"/>
+        <views:DiscordPanel x:Name="DiscordView" Grid.Column="1" Grid.ColumnSpan="2" Visibility="Collapsed"/>
       </Grid>
     </Grid>
     <!-- Activation is part of the same window. No secondary Windows dialog, endpoint field, or database credential. -->

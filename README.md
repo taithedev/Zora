@@ -49,3 +49,12 @@ Zora starts with the centered license-key screen, then requests a username. All 
 See [deployment details](docs/DEPLOY.md). The project is still a developer preview, so automated tests cannot substitute for testing with actual EXEs/APKs and Windows installation locations.
 
 UnityPy and pefile have their own upstream licenses. No GPL AssetRipper code was copied into this repository.
+
+
+## Discord sync (Zuzify bot integration)
+
+- **Zora → Discord sync** presents a browser-based Discord OAuth2 authorization flow (`identify` only). Verified Discord ID, username and display name are associated with the activated Zora license in Neon. No Discord passwords, access tokens, emails or message histories are stored.
+- The user may unlink at any time. Only one Zora license per Discord user is permitted; only active license holders can start linking.
+- The Zuzify Discord bot has a private `/zora` command that queries Zora's Neon function with a dedicated service secret. The bot never receives the user's Zora license key.
+- Database tables are deployed in the Zora Neon `zora` database. See [Discord setup](docs/DISCORD.md) to configure the OAuth2 client secret and matching redirect URI. Until the environment variables are configured and the function redeployed, the Connect button will report that linking is unavailable.
+- Zora has the latest monochrome dropdown styling to avoid system-white filter lists on Windows.

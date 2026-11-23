@@ -75,6 +75,32 @@ public sealed class LicenseService
         _settings.ProtectedRefreshToken = Protect(reply.RefreshToken);
         Save();
     }
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private async Task<T> DiscordCallAsync<T>(HttpMethod method, string path) where T : class
+    {
+        if (!await VerifyAsync()) throw new InvalidOperationException("Your Zora license session has expired. Sign in again.");
+        using var req = new HttpRequestMessage(method, Endpoint(path));
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _access);
+        using var res = await _http.SendAsync(req);
+        var responseText = await res.Content.ReadAsStringAsync();
+        if (!res.IsSuccessStatusCode)
+        {
+            try
+            {
+                using var parsed = JsonDocument.Parse(responseText);
+                var message = parsed.RootElement.GetProperty("message").GetString();
+                throw new InvalidOperationException(message ?? "Discord request was not accepted.");
+            }
+            catch (JsonException) { throw new InvalidOperationException("Could not contact the Discord linking service."); }
+            catch (KeyNotFoundException) { throw new InvalidOperationException("Discord request was not accepted."); }
+        }
+        return JsonSerializer.Deserialize<T>(responseText, JsonOptions)
+            ?? throw new InvalidOperationException("Invalid Discord sync response.");
+    }
+    public Task<DiscordLink> GetDiscordAsync() => DiscordCallAsync<DiscordLink>(HttpMethod.Get, "/v1/discord/me");
+    public Task<DiscordStartResult> StartDiscordAsync() => DiscordCallAsync<DiscordStartResult>(HttpMethod.Post, "/v1/discord/start");
+    public Task<DiscordLink> UnlinkDiscordAsync() => DiscordCallAsync<DiscordLink>(HttpMethod.Post, "/v1/discord/unlink");
+
     public async Task ActivateAsync(string username, string key)
     {
         using var response = await _http.PostAsJsonAsync(Endpoint("/v1/license/activate"), new { username, key, installationId = _settings.InstallationId });

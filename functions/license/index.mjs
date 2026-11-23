@@ -15,7 +15,7 @@ export default {
       if (size > 64000) return Response.json({ error: 'too_large', message: 'Request body too large' }, { status: 413 });
       const raw = await request.text();
       if (raw.length > 64000) return Response.json({ error: 'too_large', message: 'Request body too large' }, { status: 413 });
-      try { body = JSON.parse(raw); }
+      try { body = raw.trim() ? JSON.parse(raw) : {}; }
       catch { return Response.json({ error: 'invalid_json', message: 'Invalid JSON' }, { status: 400 }); }
     }
     const req = { method: request.method, url: uri.pathname + uri.search, headers, body,

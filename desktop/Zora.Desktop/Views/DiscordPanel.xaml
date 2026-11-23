@@ -1,0 +1,44 @@
+<UserControl x:Class="Zora.Desktop.Views.DiscordPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="450" Background="Black">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="44,40,44,40" MaxWidth="870" HorizontalAlignment="Left">
+      <TextBlock Text="YOUR ZORA PROFILE" Foreground="#8D8D8D" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,12"/>
+      <TextBlock Text="Connected accounts." FontSize="36" FontWeight="SemiBold"/>
+      <TextBlock Text="Link your Zora license with Discord through your Zuzify Discord bot. You control the connection."
+                 FontSize="13" Foreground="#A2A2A2" Margin="0,10,0,32" MaxWidth="690"/>
+      <Border Background="#111111" CornerRadius="18" Padding="28" Width="640" HorizontalAlignment="Left">
+        <StackPanel>
+          <Grid Margin="0,0,0,16">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel>
+              <TextBlock Text="DISCORD" FontWeight="Bold" FontSize="19"/>
+              <TextBlock Text="Zuzify Discord bot · Account sync" Foreground="#A0A0A0" FontSize="12" Margin="0,7,0,0"/>
+            </StackPanel>
+            <Border Grid.Column="1" Background="#242424" CornerRadius="7" Padding="11,7" VerticalAlignment="Top">
+              <TextBlock x:Name="LinkState" Text="NOT LINKED" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+            </Border>
+          </Grid>
+          <Border Height="1" Background="#292929" Margin="0,0,0,17"/>
+          <TextBlock x:Name="DiscordName" Text="No Discord account connected" FontWeight="SemiBold" FontSize="18"/>
+          <TextBlock x:Name="DiscordId" Text="Link once to sync your verified Discord identity to Neon."
+                     Foreground="#A5A5A5" FontSize="12" Margin="0,8,0,22"/>
+          <StackPanel Orientation="Horizontal">
+            <Button x:Name="ConnectButton" Style="{StaticResource AccentButton}" Content="CONNECT DISCORD" Padding="22,13" Click="Connect_Click" Margin="0,0,12,0"/>
+            <Button x:Name="RefreshButton" Content="REFRESH STATUS" Padding="22,13" Click="Refresh_Click" Margin="0,0,12,0"/>
+            <Button x:Name="UnlinkButton" Content="UNLINK" Padding="22,13" Visibility="Collapsed" Click="Unlink_Click"/>
+          </StackPanel>
+          <TextBlock x:Name="Feedback" Foreground="#A0A0A0" FontSize="12" Margin="0,22,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <Border Background="#101010" CornerRadius="14" Padding="23" Margin="0,20,0,0" Width="640" HorizontalAlignment="Left">
+        <StackPanel>
+          <TextBlock Text="PRIVACY AND SECURITY" FontWeight="SemiBold" FontSize="12"/>
+          <TextBlock Text="Discord asks you to authorize only basic identity access (identify). Zora stores your Discord ID and display name with your license in Neon. It never asks for your Discord password, reads your private messages, or shares your license key with the bot. Disconnect at any time."
+                     Foreground="#A0A0A0" FontSize="12" Margin="0,11,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

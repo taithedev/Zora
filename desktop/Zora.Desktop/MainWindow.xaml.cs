@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         AssetGrid.ItemsSource = _assets;
+        DiscordView.UseLicense(_license);
         SourceInitialized += (_, _) => {
             try { var handle = new WindowInteropHelper(this).Handle; int dark = 1; DwmSetWindowAttribute(handle, 20, ref dark, sizeof(int)); int round = 2; DwmSetWindowAttribute(handle, 33, ref round, sizeof(int)); }
             catch { /* Native dark title-bar attribute may be unsupported. */ }
@@ -115,14 +116,17 @@ public partial class MainWindow : Window
     private void Explorer_Click(object sender, RoutedEventArgs e) => SwitchPage("explorer");
     private void CodeStudio_Click(object sender, RoutedEventArgs e) => SwitchPage("editor");
     private void Zuro_Click(object sender, RoutedEventArgs e) => SwitchPage("zuro");
+    private void Discord_Click(object sender, RoutedEventArgs e) => SwitchPage("discord");
     private void SwitchPage(string page)
     {
         ExplorerBody.Visibility = page == "explorer" ? Visibility.Visible : Visibility.Collapsed;
         InspectorBody.Visibility = page == "explorer" ? Visibility.Visible : Visibility.Collapsed;
         CodeStudioView.Visibility = page == "editor" ? Visibility.Visible : Visibility.Collapsed;
         ZuroView.Visibility = page == "zuro" ? Visibility.Visible : Visibility.Collapsed;
+        DiscordView.Visibility = page == "discord" ? Visibility.Visible : Visibility.Collapsed;
         var active = page == "editor" ? (FrameworkElement)CodeStudioView :
-                     page == "zuro" ? ZuroView : ExplorerBody;
+                     page == "zuro" ? ZuroView :
+                     page == "discord" ? DiscordView : ExplorerBody;
         active.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(230))
         { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } });
         var offset = new TranslateTransform(0, 12);
