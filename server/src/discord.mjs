@@ -169,12 +169,14 @@ export function createDiscordHandler({ db, json, error, audit, sessionSecret, fe
     if (botSecret.length < 32 || !auth.startsWith('Bot ') || !safeEqual(botSecret, auth.slice(4))) {
       throw error(401, 'unauthorized', 'Invalid bot credentials');
     }
-    const { rows } = await db.query(`SELECT l.username,dl.linked_at FROM zora_discord_links dl
+    const { rows } = await db.query(`SELECT l.username,dl.linked_at,zl.zuzify_user_id FROM zora_discord_links dl
       JOIN zora_licenses l ON l.id=dl.license_id
+      LEFT JOIN zora_zuzify_links zl ON zl.license_id=l.id
       WHERE dl.discord_user_id=$1 AND l.status='active'
       AND (l.expires_at IS NULL OR l.expires_at>now())`, [id]);
     return json(res, 200, { linked: Boolean(rows[0]),
-      username: rows[0]?.username || null, linkedAt: rows[0]?.linked_at || null });
+      username: rows[0]?.username || null, linkedAt: rows[0]?.linked_at || null,
+      zuzifyUserId: rows[0]?.zuzify_user_id || null });
   }
 
   return async function discordHandler(req, res, path, url) {
