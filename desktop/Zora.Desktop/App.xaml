@@ -13,25 +13,36 @@
     <SolidColorBrush x:Key="Primary" Color="#FFFFFF"/>
     <Style TargetType="Window">
       <Setter Property="FontFamily" Value="Segoe UI Variable, Segoe UI"/>
+      <Setter Property="UseLayoutRounding" Value="True"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
       <Setter Property="Foreground" Value="{StaticResource Text}"/>
       <Setter Property="Background" Value="{StaticResource Canvas}"/>
     </Style>
+    <!-- TextBlock MUST inherit its foreground from the parent control.
+         Setting it to white here makes every white-button caption white-on-white. -->
     <Style TargetType="TextBlock">
-      <Setter Property="Foreground" Value="{StaticResource Text}"/>
       <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
+    </Style>
+    <!-- Explicit grid-cell text style prevents theme-dependent white/black table cells. -->
+    <Style x:Key="GridValueText" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="#F5F5F5"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+      <Setter Property="TextWrapping" Value="NoWrap"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
     <Style TargetType="Button">
       <Setter Property="Foreground" Value="{StaticResource Text}"/>
       <Setter Property="Background" Value="{StaticResource Panel}"/>
       <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Padding" Value="16,10"/>
+      <Setter Property="Padding" Value="17,11"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="FontSize" Value="12"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"
-                    CornerRadius="11" SnapsToDevicePixels="True" RenderTransformOrigin="0.5,0.5">
+                    CornerRadius="12" SnapsToDevicePixels="True" RenderTransformOrigin="0.5,0.5">
               <Border.RenderTransform><ScaleTransform x:Name="ButtonScale" ScaleX="1" ScaleY="1"/></Border.RenderTransform>
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" TextElement.Foreground="{TemplateBinding Foreground}"/>
             </Border>
@@ -58,6 +69,7 @@
       <Setter Property="Foreground" Value="#000000"/>
       <Setter Property="Background" Value="#FFFFFF"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="FontSize" Value="12"/>
     </Style>
     <Style x:Key="SidebarButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
       <Setter Property="Background" Value="Transparent"/>
@@ -81,20 +93,31 @@
       <Setter Property="Background" Value="#111111"/>
       <Setter Property="CornerRadius" Value="14"/>
       <Setter Property="Padding" Value="18,14"/>
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Background" Value="#171717"/>
+        </Trigger>
+      </Style.Triggers>
     </Style>
     <Style TargetType="TextBox">
       <Setter Property="Foreground" Value="{StaticResource Text}"/>
       <Setter Property="Background" Value="#141414"/>
       <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Padding" Value="15,13"/>
+      <Setter Property="Padding" Value="14,8"/>
       <Setter Property="FontSize" Value="14"/>
       <Setter Property="CaretBrush" Value="White"/>
       <Setter Property="SelectionBrush" Value="#555555"/>
       <Setter Property="Template">
         <Setter.Value><ControlTemplate TargetType="TextBox">
-          <Border Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}" ClipToBounds="True">
+          <Border x:Name="InputSurface" Background="{TemplateBinding Background}" CornerRadius="11"
+                  Padding="{TemplateBinding Padding}" ClipToBounds="True">
             <ScrollViewer x:Name="PART_ContentHost" Focusable="False"/>
           </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+              <Setter TargetName="InputSurface" Property="Background" Value="#202020"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
         </ControlTemplate></Setter.Value>
       </Setter>
     </Style>

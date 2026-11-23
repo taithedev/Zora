@@ -124,6 +124,11 @@ public partial class MainWindow : Window
         CodeStudioView.Visibility = page == "editor" ? Visibility.Visible : Visibility.Collapsed;
         ZuroView.Visibility = page == "zuro" ? Visibility.Visible : Visibility.Collapsed;
         DiscordView.Visibility = page == "discord" ? Visibility.Visible : Visibility.Collapsed;
+        // The active tab must change with the page; previously Explorer stayed selected everywhere.
+        ExplorerNav.Background = page == "explorer" ? new SolidColorBrush(Color.FromRgb(38,38,38)) : Brushes.Transparent;
+        EditorNav.Background = page == "editor" ? new SolidColorBrush(Color.FromRgb(38,38,38)) : Brushes.Transparent;
+        DiscordNav.Background = page == "discord" ? new SolidColorBrush(Color.FromRgb(38,38,38)) : Brushes.Transparent;
+        ZuroNav.Background = page == "zuro" ? new SolidColorBrush(Color.FromRgb(38,38,38)) : Brushes.Transparent;
         var active = page == "editor" ? (FrameworkElement)CodeStudioView :
                      page == "zuro" ? ZuroView :
                      page == "discord" ? DiscordView : ExplorerBody;
@@ -183,6 +188,7 @@ public partial class MainWindow : Window
         {
             Busy(true, "Indexing assets...");
             _assets.Clear();
+            EmptyAssetsPanel.Visibility = Visibility.Visible;
             _source = null;
             SourceLabel.Text = source;
             var scan = await _engine.ScanAsync(source);
@@ -195,6 +201,7 @@ public partial class MainWindow : Window
                 Path.GetExtension(source).Equals(".dll", StringComparison.OrdinalIgnoreCase) ? "DLL" :
                 new[] { ".zip", ".jar", ".msix", ".aab", ".nupkg" }.Contains(Path.GetExtension(source).ToLowerInvariant()) ? "ARCHIVE" : "ASSETS";
             RefreshFilter();
+            EmptyAssetsPanel.Visibility = _assets.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             NoticeLabel.Text = scan.Warnings.Count == 0 ? "Source indexed. EXPORT ALL saves readable assets; RECOVER UNITY PROJECT is available only for Unity projects/builds." :
                 $"{scan.Warnings.Count} files could not be parsed. {scan.Warnings[0]}";
             StatusText.Text = scan.Warnings.Count > 0 ? $"Indexed · {scan.Warnings.Count} warnings" : "Source indexed";
@@ -202,7 +209,12 @@ public partial class MainWindow : Window
         catch (Exception ex) { StatusText.Text = "Import failed"; NoticeLabel.Text = ex.Message; }
         finally { Busy(false); }
     }
-    private void Search_Changed(object sender, TextChangedEventArgs e) => RefreshFilter();
+    private void Search_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (SearchHint is not null && SearchBox is not null)
+            SearchHint.Visibility = string.IsNullOrEmpty(SearchBox.Text) ? Visibility.Visible : Visibility.Collapsed;
+        RefreshFilter();
+    }
     private void Filter_Changed(object sender, SelectionChangedEventArgs e) => RefreshFilter();
     private void RefreshFilter()
     {

@@ -32,19 +32,19 @@
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <TextBlock Text="WORKSPACE" Foreground="{StaticResource SubText}" FontSize="10" FontWeight="SemiBold" Margin="15,0,0,18"/>
             <StackPanel Grid.Row="1">
-              <Button Content="▣     Asset explorer" Style="{StaticResource SidebarButton}" Background="#222222" Click="Explorer_Click" Margin="0,0,0,5"/>
+              <Button x:Name="ExplorerNav" Content="▣     Asset explorer" Style="{StaticResource SidebarButton}" Background="#222222" Click="Explorer_Click" Margin="0,0,0,5"/>
               <Button Content="◫     Open project" Style="{StaticResource SidebarButton}" Click="OpenProject_Click" Margin="0,0,0,5"/>
               <Button Content="▤     Open app / archive" Style="{StaticResource SidebarButton}" Click="OpenBuild_Click" Margin="0,0,0,5"/>
               <Button x:Name="RecoverButton" Content="↓     Recover project" Style="{StaticResource SidebarButton}" Click="RecoverProject_Click" Margin="0,0,0,5"/>
-              <Button Content="⌘     Code studio" Style="{StaticResource SidebarButton}" Click="CodeStudio_Click" Margin="0,0,0,5"/>
-              <Button Content="◈     Discord sync" Style="{StaticResource SidebarButton}" Click="Discord_Click" Margin="0,0,0,5"/>
-              <Button Content="◆     Zuro · owner" Style="{StaticResource SidebarButton}" Click="Zuro_Click" Margin="0,0,0,5"/>
+              <Button x:Name="EditorNav" Content="⌘     Code studio" Style="{StaticResource SidebarButton}" Click="CodeStudio_Click" Margin="0,0,0,5"/>
+              <Button x:Name="DiscordNav" Content="◈     Discord sync" Style="{StaticResource SidebarButton}" Click="Discord_Click" Margin="0,0,0,5"/>
+              <Button x:Name="ZuroNav" Content="◆     Zuro · owner" Style="{StaticResource SidebarButton}" Click="Zuro_Click" Margin="0,0,0,5"/>
               <Button x:Name="CheckUpdatesButton" Content="↻     Check for updates" Style="{StaticResource SidebarButton}" Click="CheckUpdates_Click" Margin="0,0,0,5"/>
             </StackPanel>
             <StackPanel Grid.Row="3" Margin="14,10,8,0">
               <TextBlock Text="SIGNED IN" Foreground="{StaticResource SubText}" FontSize="10" Margin="0,0,0,8"/>
               <TextBlock x:Name="AccountLabel" Text="Not activated" FontWeight="SemiBold" FontSize="14"/>
-              <TextBlock Text="ZORA  /  0.5.0" Foreground="#6E6E6E" FontSize="10" Margin="0,15,0,0"/>
+              <TextBlock Text="ZORA  /  0.5.1" Foreground="#6E6E6E" FontSize="10" Margin="0,15,0,0"/>
             </StackPanel>
           </Grid>
         </Border>
@@ -74,22 +74,39 @@
             </WrapPanel>
             <Grid Grid.Row="1">
               <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="168"/></Grid.ColumnDefinitions>
-              <TextBox x:Name="SearchBox" Grid.Column="0" TextChanged="Search_Changed" ToolTip="Search by name, type, and path" Margin="0,0,8,0"/>
+              <Grid Grid.Column="0" Margin="0,0,8,0">
+                <TextBox x:Name="SearchBox" Height="46" VerticalContentAlignment="Center" TextChanged="Search_Changed" ToolTip="Search by name, type, and path"/>
+                <TextBlock x:Name="SearchHint" Text="Search assets, types, or paths..." Foreground="#898989"
+                           FontSize="12" Margin="16,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+              </Grid>
               <ComboBox x:Name="TypeFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="Filter_Changed">
                 <ComboBoxItem Content="All assets"/><ComboBoxItem Content="Textures"/><ComboBoxItem Content="Meshes / models"/><ComboBoxItem Content="Audio"/><ComboBoxItem Content="Scripts / data"/><ComboBoxItem Content="Other"/><ComboBoxItem Content="App resources"/><ComboBoxItem Content="PE sections"/>
               </ComboBox>
             </Grid>
             <TextBlock Grid.Row="2" x:Name="SourceLabel" Text="Drop an EXE, APK, asset file, or project folder anywhere in Zora." FontSize="11" Foreground="{StaticResource SubText}" TextTrimming="CharacterEllipsis" Margin="0,12,0,0"/>
           </Grid>
-          <DataGrid Grid.Row="3" x:Name="AssetGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended" SelectionUnit="FullRow"
-                    CanUserAddRows="False" EnableRowVirtualization="True" SelectionChanged="AssetGrid_SelectionChanged" MouseDoubleClick="AssetGrid_MouseDoubleClick">
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="ASSET" Binding="{Binding Name}" Width="2*"/>
-              <DataGridTextColumn Header="TYPE" Binding="{Binding Type}" Width="*"/>
-              <DataGridTextColumn Header="ORIGIN" Binding="{Binding Origin}" Width="*"/>
-              <DataGridTextColumn Header="SIZE" Binding="{Binding SizeText}" Width="100"/>
-            </DataGrid.Columns>
-          </DataGrid>
+          <Grid Grid.Row="3">
+            <DataGrid x:Name="AssetGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended" SelectionUnit="FullRow"
+                      CanUserAddRows="False" EnableRowVirtualization="True" SelectionChanged="AssetGrid_SelectionChanged" MouseDoubleClick="AssetGrid_MouseDoubleClick">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="ASSET" Binding="{Binding Name}" ElementStyle="{StaticResource GridValueText}" Width="2*"/>
+                <DataGridTextColumn Header="TYPE" Binding="{Binding Type}" ElementStyle="{StaticResource GridValueText}" Width="*"/>
+                <DataGridTextColumn Header="ORIGIN" Binding="{Binding Origin}" ElementStyle="{StaticResource GridValueText}" Width="*"/>
+                <DataGridTextColumn Header="SIZE" Binding="{Binding SizeText}" ElementStyle="{StaticResource GridValueText}" Width="100"/>
+              </DataGrid.Columns>
+            </DataGrid>
+            <Border x:Name="EmptyAssetsPanel" Background="Black" Margin="0,45,0,0">
+              <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="440">
+                <TextBlock Text="◫" FontSize="40" Foreground="#777777" HorizontalAlignment="Center"/>
+                <TextBlock Text="Your next project starts here." FontSize="20" FontWeight="SemiBold"
+                           TextAlignment="Center" Margin="0,12,0,0"/>
+                <TextBlock Text="Drop a Unity project, EXE, DLL or APK to inspect its supported assets."
+                           Foreground="{StaticResource SubText}" TextAlignment="Center" Margin="0,10,0,22" FontSize="12"/>
+                <Button Content="BROWSE FILES" Style="{StaticResource AccentButton}" Width="170"
+                        HorizontalAlignment="Center" Click="OpenBuild_Click"/>
+              </StackPanel>
+            </Border>
+          </Grid>
           <Grid Grid.Row="4" Margin="0,14,0,0">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <Grid Grid.Row="0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>

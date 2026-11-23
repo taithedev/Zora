@@ -7,14 +7,14 @@
     <Grid Grid.Row="0" Margin="0,0,0,26">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <StackPanel><TextBlock Text="Zuro." FontSize="35" FontWeight="SemiBold"/>
-        <TextBlock Text="Private owner workspace  /  Synced with Neon" FontSize="12" Foreground="{StaticResource SubText}" Margin="0,8,0,0"/></StackPanel>
+        <TextBlock Text="Secure licensing control center  /  Synced with Neon" FontSize="12" Foreground="{StaticResource SubText}" Margin="0,8,0,0"/></StackPanel>
       <TextBlock Grid.Column="1" Text="OWNER ACCESS" FontSize="11" Foreground="{StaticResource SubText}" VerticalAlignment="Center"/>
     </Grid>
     <Border Grid.Row="1" x:Name="OwnerLoginPanel" CornerRadius="20" Background="#0D0D0D" MaxWidth="510" MaxHeight="390" Padding="38" HorizontalAlignment="Center" VerticalAlignment="Center">
       <StackPanel>
         <Border Background="White" CornerRadius="14" Height="48" Width="48" HorizontalAlignment="Center" Margin="0,0,0,20"><TextBlock Text="Z" FontSize="25" FontWeight="Black" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
         <TextBlock Text="Unlock Zuro" TextAlignment="Center" FontSize="26" FontWeight="SemiBold"/>
-        <TextBlock Text="Enter the owner password from Neon. The password never gets stored by this app." Foreground="{StaticResource SubText}" TextAlignment="Center" FontSize="12" Margin="0,9,0,22"/>
+        <TextBlock Text="Use your Neon owner password to securely access account management. Zora doesn't save it." Foreground="{StaticResource SubText}" TextAlignment="Center" FontSize="12" Margin="0,9,0,22"/>
         <PasswordBox x:Name="OwnerPassword" Height="47" Padding="14,11" KeyDown="Password_KeyDown"/>
         <Button x:Name="LoginButton" Content="UNLOCK OWNER WORKSPACE" Style="{StaticResource AccentButton}" Margin="0,14,0,0" Height="47" Click="Login_Click"/>
       </StackPanel>
@@ -30,8 +30,9 @@
       </Grid>
       <Grid Grid.Row="1" Margin="0,0,0,20">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="80"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <TextBlock Text="Generate" VerticalAlignment="Center" Margin="0,0,12,0"/>
-        <TextBox x:Name="QuantityBox" Grid.Column="1" Text="1" TextAlignment="Center" VerticalContentAlignment="Center" Height="43" Margin="0,0,10,0"/>
+        <TextBlock Text="Generate keys" FontSize="12" VerticalAlignment="Center" Margin="0,0,12,0"/>
+        <TextBox x:Name="QuantityBox" Grid.Column="1" Text="1" FontSize="14" TextAlignment="Center"
+                 VerticalContentAlignment="Center" Height="43" Padding="12,5" Margin="0,0,10,0" ToolTip="1 to 500 licenses"/>
         <Button Grid.Column="2" Content="CREATE REAL KEYS" Style="{StaticResource AccentButton}" Click="Generate_Click" Margin="0,0,10,0"/>
         <StackPanel Grid.Column="4" Orientation="Horizontal">
           <Button Content="SYNC NEON" Click="Refresh_Click" Margin="0,0,8,0"/>
@@ -44,16 +45,18 @@
           <TextBlock Text="LICENSE ACCOUNTS" FontWeight="SemiBold" Foreground="{StaticResource SubText}" FontSize="11" Margin="4,0,0,12"/>
           <DataGrid Grid.Row="1" x:Name="LicensesGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="KEY" Binding="{Binding KeyLabel}" Width="2*"/>
-              <DataGridTextColumn Header="USER" Binding="{Binding Username}" Width="*"/>
-              <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="*"/>
-              <DataGridTextColumn Header="DEVICES" Binding="{Binding Devices}" Width="80"/>
+              <DataGridTextColumn Header="KEY" Binding="{Binding KeyLabel}" ElementStyle="{StaticResource GridValueText}" Width="2*"/>
+              <DataGridTextColumn Header="USER" Binding="{Binding UsernameDisplay}" ElementStyle="{StaticResource GridValueText}" Width="*"/>
+              <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" ElementStyle="{StaticResource GridValueText}" Width="*"/>
+              <DataGridTextColumn Header="DEVICES" Binding="{Binding Devices}" ElementStyle="{StaticResource GridValueText}" Width="80"/>
             </DataGrid.Columns>
           </DataGrid>
           <WrapPanel Grid.Row="2" Margin="0,13,0,0">
             <Button Content="BAN" Click="Ban_Click" Margin="0,0,8,0"/>
             <Button Content="UNBAN" Click="Unban_Click" Margin="0,0,8,0"/>
             <Button Content="REVOKE" Click="Revoke_Click"/>
+            <TextBlock Text="Select a row above to manage its license." Foreground="{StaticResource SubText}"
+                       VerticalAlignment="Center" FontSize="11" Margin="14,0,0,0"/>
           </WrapPanel>
         </Grid>
         <Grid Grid.Column="1"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>

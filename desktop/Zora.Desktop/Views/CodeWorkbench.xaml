@@ -16,8 +16,10 @@
       <Button Content="SAVE  CTRL+S" Click="Save_Click" Margin="0,0,8,0"/>
       <Button Content="SAVE AS" Click="SaveAs_Click" Margin="0,0,8,0"/>
       <Button Content="CLOSE TAB" Click="Close_Click" Margin="0,0,8,0"/>
+      <TextBlock Text="Find" Foreground="{StaticResource SubText}" VerticalAlignment="Center" Margin="6,0,8,0"/>
       <TextBox x:Name="FindTextBox" Width="155" Height="40" VerticalContentAlignment="Center" Margin="0,0,7,0" ToolTip="Find text" KeyDown="FindText_KeyDown"/>
       <Button Content="FIND NEXT" Click="Find_Click" Margin="0,0,8,0"/>
+      <TextBlock Text="Line" Foreground="{StaticResource SubText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
       <TextBox x:Name="GoLineBox" Width="57" Height="40" TextAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,7,0" ToolTip="Line number" KeyDown="GoLineText_KeyDown"/>
       <Button Content="GO" Click="GoLine_Click"/>
     </WrapPanel>

@@ -1,4 +1,13 @@
-# ZORA — Native Application & Unity Asset Studio
+# ZORA
+
+### v0.5.1 Native UI readability update
+
+- Fixes invisible text on white buttons by removing an implicit white `TextBlock` foreground override.
+- Uses a shared high-contrast text style for Asset Explorer and Zuro tables.
+- Correctly maps Neon `key_label` onto Zuro license rows; unclaimed accounts now show `Unclaimed`.
+- Adds a searchable empty-state experience, active sidebar navigation, and clearer Code Studio / Zuro controls.
+- Retains the native Windows WPF architecture (no Electron).
+ — Native Application & Unity Asset Studio
 
 **Version:** 0.5.0 developer preview · **Target price:** $25 per license · **Platform:** Windows 10/11 x64 · Native .NET 8 WPF, rounded monochrome OLED theme. No Electron.
 

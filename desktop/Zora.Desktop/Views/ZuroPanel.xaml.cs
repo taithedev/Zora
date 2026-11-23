@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -21,8 +22,10 @@ public partial class ZuroPanel : UserControl
     private sealed class LicenseRow
     {
         public Guid Id { get; set; }
+        [JsonPropertyName("key_label")]
         public string KeyLabel { get; set; } = "";
         public string? Username { get; set; }
+        public string UsernameDisplay => string.IsNullOrWhiteSpace(Username) ? "Unclaimed" : Username;
         public string Status { get; set; } = "";
         public int Devices { get; set; }
     }
