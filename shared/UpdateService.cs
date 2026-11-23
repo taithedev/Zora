@@ -97,7 +97,7 @@ public sealed class UpdateService(string assetName, string launchExecutable)
                 if (!CryptographicOperations.FixedTimeEquals(sha.GetHashAndReset(), Convert.FromHexString(expected)))
                     throw new InvalidOperationException("Update SHA-256 verification failed. No files were modified.");
                 File.Move(partial, final, true);
-                return new StagedUpdate(version, final, expected, tag);
+                return new StagedUpdate(version, final, expected, tag, installed);
             }
             finally { if (File.Exists(partial)) File.Delete(partial); }
         }
