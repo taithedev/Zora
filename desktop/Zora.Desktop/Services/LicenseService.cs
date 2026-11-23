@@ -76,7 +76,7 @@ public sealed class LicenseService
         Save();
     }
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private async Task<T> DiscordCallAsync<T>(HttpMethod method, string path) where T : class
+    private async Task<T> AccountCallAsync<T>(HttpMethod method, string path) where T : class
     {
         if (!await VerifyAsync()) throw new InvalidOperationException("Your Zora license session has expired. Sign in again.");
         using var req = new HttpRequestMessage(method, Endpoint(path));
@@ -89,17 +89,21 @@ public sealed class LicenseService
             {
                 using var parsed = JsonDocument.Parse(responseText);
                 var message = parsed.RootElement.GetProperty("message").GetString();
-                throw new InvalidOperationException(message ?? "Discord request was not accepted.");
+                throw new InvalidOperationException(message ?? "Account connection request was not accepted.");
             }
-            catch (JsonException) { throw new InvalidOperationException("Could not contact the Discord linking service."); }
-            catch (KeyNotFoundException) { throw new InvalidOperationException("Discord request was not accepted."); }
+            catch (JsonException) { throw new InvalidOperationException("Could not contact the account linking service."); }
+            catch (KeyNotFoundException) { throw new InvalidOperationException("Account connection request was not accepted."); }
         }
         return JsonSerializer.Deserialize<T>(responseText, JsonOptions)
-            ?? throw new InvalidOperationException("Invalid Discord sync response.");
+            ?? throw new InvalidOperationException("Invalid account sync response.");
     }
-    public Task<DiscordLink> GetDiscordAsync() => DiscordCallAsync<DiscordLink>(HttpMethod.Get, "/v1/discord/me");
-    public Task<DiscordStartResult> StartDiscordAsync() => DiscordCallAsync<DiscordStartResult>(HttpMethod.Post, "/v1/discord/start");
-    public Task<DiscordLink> UnlinkDiscordAsync() => DiscordCallAsync<DiscordLink>(HttpMethod.Post, "/v1/discord/unlink");
+    public Task<DiscordLink> GetDiscordAsync() => AccountCallAsync<DiscordLink>(HttpMethod.Get, "/v1/discord/me");
+    public Task<DiscordStartResult> StartDiscordAsync() => AccountCallAsync<DiscordStartResult>(HttpMethod.Post, "/v1/discord/start");
+    public Task<DiscordLink> UnlinkDiscordAsync() => AccountCallAsync<DiscordLink>(HttpMethod.Post, "/v1/discord/unlink");
+    public Task<ZuzifyLink> GetZuzifyAsync() => AccountCallAsync<ZuzifyLink>(HttpMethod.Get, "/v1/zuzify/me");
+    public Task<DiscordStartResult> StartZuzifyAsync() => AccountCallAsync<DiscordStartResult>(HttpMethod.Post, "/v1/zuzify/start");
+    public Task<ZuzifyLink> UnlinkZuzifyAsync() => AccountCallAsync<ZuzifyLink>(HttpMethod.Post, "/v1/zuzify/unlink");
+
 
     public async Task ActivateAsync(string username, string key)
     {
