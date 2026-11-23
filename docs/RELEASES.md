@@ -7,7 +7,7 @@ The update is downloaded to `%LOCALAPPDATA%\\Zora\\updates\\<version>` (no API k
 To publish:
 
 1. Push source changes to `main`, and verify `Zora Windows build` completed successfully.
-2. Create and push a new Git tag `v0.4.0` (or higher). GitHub Actions builds portable `Zora-Windows-x64.zip` and `ZoraAdmin-Windows-x64.zip`, including `ZoraUpdater.exe`, and publishes a Release if both build/test jobs pass.
+2. For this initial release, push a reviewed `release: v0.4.0` commit to `main`, or create and push Git tag `v0.4.0`. GitHub Actions builds portable `Zora-Windows-x64.zip` and `ZoraAdmin-Windows-x64.zip`, including `ZoraUpdater.exe`, and publishes a Release if both build/test jobs pass.
 3. Verify the Release exposes GitHub API `digest: sha256:...` metadata on both ZIP assets.
 4. Test upgrading from an older portable folder in Windows without admin privileges and test its rollback/restore strategy before production rollout.
 

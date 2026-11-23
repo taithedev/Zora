@@ -34,7 +34,7 @@ Zora starts with the centered license-key screen, then requests a username. All 
 - Neon database: project `Zora`, PostgreSQL 18, database `zora`.
 - Managed HTTPS function: slug `zoralicense` (the existing one; no new independent license server).
 - Build and unit tests: `.github/workflows/windows-build.yml` runs Node tests, Python tests, and publishes Windows app, updater and console.
-- Release publishing: push a tested version tag such as `v0.4.0` to trigger the workflow and publish both portable ZIPs to GitHub Releases. Future versions with higher semantic versions can update from that feed.
+- Release publishing: push a tested version tag such as `v0.4.0`, or a reviewed `release: v0.4.0` commit to `main`, to trigger the workflow and publish both portable ZIPs to GitHub Releases. Future versions with higher semantic versions can update from that feed.
 - To run locally: `python -m pip install -r engine/requirements.txt`, `cd server && npm test`, `python -m unittest discover -s engine/tests -v`, and `dotnet run --project desktop/Zora.Desktop` on Windows with the .NET 8 SDK.
 
 See [deployment details](docs/DEPLOY.md). The project is still a developer preview, so automated tests cannot substitute for testing with actual EXEs/APKs and Windows installation locations.
