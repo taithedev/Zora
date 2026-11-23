@@ -13,7 +13,7 @@ Zora is an independently developed desktop asset inspection/export app for Unity
 - Export decoded `Texture2D` / `Sprite` to PNG, `Mesh` to OBJ, `AudioClip` to WAV when decodable, fonts to TTF/OTF, `TextAsset` to raw text
 - Export readable `MonoBehaviour`, `Material`, `AnimationClip`, `Shader` metadata as JSON when type trees are available. **Not** full prefab/scene reconstruction, FBX rig reconstruction, or 3D scene rendering
 - License-bound username accounts, one activation device by default, online verification, secure random license keys, revocation, audit log
-- Owner CLI: bulk keys (up to 500), ban, unban, revoke, reset device activations, audit, stats, account list
+- Native ZoraAdmin.exe owner console and Node.js CLI: bulk keys (up to 500), ban, unban, revoke, reset device activations, audit, stats, account list
 
 **Limitations:** This app does not decrypt protected content, defeat DRM, or reconstruct entire Unity source projects from arbitrary games. Use only assets you own or have permission to extract. Zora cannot claim better feature coverage than AssetRipper at this stage.
 
@@ -32,11 +32,11 @@ desktop/Zora.Desktop/      Native .NET 8 Windows WPF interface
 1. Install **.NET 8 SDK**, **Node.js 20+**, and **Python 3.11** on Windows.
 2. Create the `Zora` Neon project (already created for this deployment) and run `server/schema.sql` on the `zora` database if deploying elsewhere.
 3. In `server`, `npm install`. Set `DATABASE_URL`, `ZORA_KEY_PEPPER`, `ZORA_SESSION_SECRET`, `ZORA_ADMIN_TOKEN`, then `npm start`. See `server/.env.example` and `docs/DEPLOY.md`. Only the API server gets database credentials.
-4. Set `ZORA_API_URL=http://127.0.0.1:8787` and `ZORA_ADMIN_TOKEN` in your terminal. Run `node admin/zora-admin.mjs create 1` to generate your first key. **Keys are displayed only once.**
+4. Set `ZORA_API_URL=http://127.0.0.1:8787` and `ZORA_ADMIN_TOKEN` in your terminal. Run `node admin/zora-admin.mjs create 1` (or run the separate ZoraAdmin.exe owner console) to generate your first key. **Keys are displayed only once.**
 5. `python -m pip install -r engine/requirements.txt`; then `dotnet run --project desktop/Zora.Desktop`. Enter a username, the generated key, and the local API URL in the native app.
 6. Select an owned Unity project or build and export supported assets to a separate folder.
 
-The app calls the local Python script in a developer checkout. GitHub Actions packages it into `engine/zora-engine.exe` and builds a self-contained Windows release ZIP. The repository includes a Vercel serverless entry at `api/index.mjs`; configure encrypted environment variables before deploying it.
+The app calls the local Python script in a developer checkout. GitHub Actions packages it into `engine/zora-engine.exe` and builds a self-contained Windows release ZIP, plus a separate native ZoraAdmin.exe archive. The repository includes a Vercel serverless entry at `api/index.mjs`; configure encrypted environment variables before deploying it.
 
 ## Price and commercial protection
 

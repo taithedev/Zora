@@ -7,6 +7,7 @@ on:
       - 'desktop/**'
       - 'engine/**'
       - 'server/**'
+      - 'admin/**'
       - '.github/workflows/windows-build.yml'
   pull_request:
 permissions:
@@ -37,6 +38,11 @@ jobs:
         run: dotnet restore desktop/Zora.Desktop/Zora.Desktop.csproj
       - name: Publish native Windows app
         run: dotnet publish desktop/Zora.Desktop/Zora.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+      - name: Publish owner-only console EXE
+        run: dotnet publish admin/Zora.Admin/Zora.Admin.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o admin-publish
+      - name: Package owner console
+        shell: pwsh
+        run: Compress-Archive -Path admin-publish/* -DestinationPath ZoraAdmin-Windows-x64.zip -Force
       - name: Include extraction engine
         shell: pwsh
         run: |
@@ -47,4 +53,9 @@ jobs:
         with:
           name: Zora-Windows-x64
           path: Zora-Windows-x64.zip
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZoraAdmin-Windows-x64
+          path: ZoraAdmin-Windows-x64.zip
           retention-days: 7
