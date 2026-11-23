@@ -14,7 +14,7 @@ using System.Text.Json;
 
 namespace Zora.Updates;
 
-public sealed record StagedUpdate(Version Version, string ZipPath, string Sha256, string Tag);
+public sealed record StagedUpdate(Version Version, string ZipPath, string Sha256, string Tag, bool IsInstaller = false);
 
 /// <summary>Checks public GitHub releases, verifies their SHA-256 digests and stages portable updates.</summary>
 public sealed class UpdateService(string assetName, string launchExecutable)
@@ -47,9 +47,14 @@ public sealed class UpdateService(string assetName, string launchExecutable)
         if (!tag.StartsWith('v') || !Version.TryParse(tag[1..], out var version)) return null;
         if (version <= CurrentVersion) return null;
 
+        // Installed editions use the Inno Setup installer to keep shortcuts and
+        // Windows' Add/Remove Programs metadata in sync. Portable editions keep ZIP updates.
+        var installed = launchExecutable == "Zora.exe" &&
+            File.Exists(Path.Combine(AppContext.BaseDirectory, ".zora-installed"));
+        var requestedAsset = installed ? "Zora-Setup-x64.exe" : assetName;
         foreach (var asset in root.GetProperty("assets").EnumerateArray())
         {
-            if (asset.GetProperty("name").GetString() != assetName) continue;
+            if (asset.GetProperty("name").GetString() != requestedAsset) continue;
             var uriText = asset.GetProperty("browser_download_url").GetString() ?? "";
             if (!Uri.TryCreate(uriText, UriKind.Absolute, out var url) || url.Scheme != Uri.UriSchemeHttps ||
                 url.Host != "github.com" || !url.AbsoluteUri.StartsWith(ReleasePath, StringComparison.Ordinal))
@@ -64,10 +69,10 @@ public sealed class UpdateService(string assetName, string launchExecutable)
             var basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                                         "Zora", "updates", tag);
             Directory.CreateDirectory(basePath);
-            var final = Path.Combine(basePath, assetName);
+            var final = Path.Combine(basePath, requestedAsset);
             if (File.Exists(final) && await VerifyAsync(final, expected, cancellationToken))
-                return new StagedUpdate(version, final, expected, tag);
-            var partial = Path.Combine(basePath, $"{assetName}.{Guid.NewGuid():N}.partial");
+                return new StagedUpdate(version, final, expected, tag, installed);
+            var partial = Path.Combine(basePath, $"{requestedAsset}.{Guid.NewGuid():N}.partial");
             try
             {
                 using var download = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -122,7 +127,7 @@ public sealed class UpdateService(string assetName, string launchExecutable)
         var standalone = Path.Combine(Path.GetTempPath(), $"ZoraUpdater-{Guid.NewGuid():N}.exe");
         File.Copy(updater, standalone);
         var process = new ProcessStartInfo(standalone) { UseShellExecute = false, WorkingDirectory = install };
-        foreach (var argument in new[] { "--archive", update.ZipPath, "--sha256", update.Sha256, "--target", install,
+        foreach (var argument in new[] { update.IsInstaller ? "--installer" : "--archive", update.ZipPath, "--sha256", update.Sha256, "--target", install,
                                          "--pid", Environment.ProcessId.ToString(), "--launch", launchExecutable })
             process.ArgumentList.Add(argument);
         if (Process.Start(process) is null) throw new InvalidOperationException("Failed to start the update installer.");

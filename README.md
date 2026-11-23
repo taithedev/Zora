@@ -1,5 +1,8 @@
 # ZORA
 
+**v0.7.0 — One-click Windows installer & automatic setup.** Download `Zora-Setup-x64.exe` from GitHub Releases, double-click to install without administrator rights. It installs the native application, Unity extraction engine, updater, Start Menu shortcut, optional desktop shortcut and uninstaller, and launches when finished. No separate runtime, Python or Node installation required. Installed editions receive verified future installer upgrades; portable editions continue ZIP updates. [Setup guide](docs/INSTALLER.md).
+
+
 ### v0.6.0 Native UI readability update
 
 - Fixes invisible text on white buttons by removing an implicit white `TextBlock` foreground override.

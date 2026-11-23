@@ -12,6 +12,8 @@ on:
       - 'engine/**'
       - 'server/**'
       - 'admin/**'
+      - 'installer/**'
+      - 'docs/RELEASES.md'
       - '.github/workflows/windows-build.yml'
   pull_request:
 permissions:
@@ -79,6 +81,36 @@ jobs:
           Copy-Item engine/dist/zora-engine.exe publish/engine/zora-engine.exe
           Copy-Item updater-publish/ZoraUpdater.exe publish/ZoraUpdater.exe
           Compress-Archive -Path publish/* -DestinationPath Zora-Windows-x64.zip -Force
+      - name: Build one-click Windows installer
+        shell: pwsh
+        run: |
+          $iscc = @(
+            "${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe",
+            "$env:ProgramFiles\\Inno Setup 6\\ISCC.exe",
+            "C:\\ProgramData\\chocolatey\\bin\\ISCC.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "Inno Setup 6 compiler not found on the Windows runner." }
+          & $iscc "installer\\Zora.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
+          if (-not (Test-Path "installer-out\\Zora-Setup-x64.exe")) { throw "Installer output missing" }
+      - name: Verify unattended install and clean uninstall
+        shell: pwsh
+        run: |
+          $installer = (Resolve-Path "installer-out\\Zora-Setup-x64.exe").Path
+          $dest = Join-Path $env:RUNNER_TEMP "zora-setup-smoke"
+          $installed = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=`"$dest`"") -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { throw "Silent installer failed: $($installed.ExitCode)" }
+          foreach ($name in @("Zora.exe","ZoraUpdater.exe","engine\\zora-engine.exe",".zora-installed","unins000.exe")) {
+            if (-not (Test-Path (Join-Path $dest $name))) { throw "Missing installed component: $name" }
+          }
+          $removed = Start-Process -FilePath (Join-Path $dest "unins000.exe") -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($removed.ExitCode -ne 0) { throw "Uninstaller failed: $($removed.ExitCode)" }
+          if (Test-Path (Join-Path $dest "Zora.exe")) { throw "Uninstall did not remove application" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Zora-Setup-x64
+          path: installer-out/Zora-Setup-x64.exe
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
           name: Zora-Windows-x64
@@ -99,6 +131,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
+          name: Zora-Setup-x64
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
           name: Zora-Windows-x64
           path: release
       - uses: actions/download-artifact@v4
@@ -109,8 +145,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            release/Zora-Setup-x64.exe
             release/Zora-Windows-x64.zip
             release/ZoraAdmin-Windows-x64.zip
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v0.6.0' }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v0.7.0' }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true

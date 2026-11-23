@@ -13,7 +13,8 @@ public static class Program
         {
             var parameters = new Dictionary<string, string>(StringComparer.Ordinal);
             for (var i = 0; i + 1 < args.Length; i += 2) parameters[args[i]] = args[i + 1];
-            var archive = Path.GetFullPath(parameters["--archive"]);
+            var isInstaller = parameters.TryGetValue("--installer", out var installerFile);
+            var archive = Path.GetFullPath(isInstaller ? installerFile! : parameters["--archive"]);
             var target = Path.GetFullPath(parameters["--target"]);
             var launch = parameters["--launch"];
             var digest = parameters["--sha256"];
@@ -23,6 +24,10 @@ public static class Program
                 digest.Length != 64 || !digest.All(Uri.IsHexDigit))
                 throw new InvalidOperationException("Invalid update destination or digest.");
             if (pid <= 0) throw new InvalidOperationException("Invalid process ID.");
+            if (isInstaller && (launch != "Zora.exe" ||
+                !File.Exists(Path.Combine(target, ".zora-installed")) ||
+                !archive.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("Installer upgrade is only permitted for installed Zora.");
             await using var verifyStream = File.OpenRead(archive);
             var hash = await SHA256.HashDataAsync(verifyStream);
             if (!CryptographicOperations.FixedTimeEquals(hash, Convert.FromHexString(digest)))
@@ -33,6 +38,25 @@ public static class Program
                 if (!previous.WaitForExit(30_000)) throw new TimeoutException("Zora did not exit before update.");
             }
             catch (ArgumentException) { /* The application exited before the updater started. */ }
+            if (isInstaller)
+            {
+                // Invoke the verified official installer only after Zora exits.
+                // No elevation, server configuration, or extra downloads.
+                var setup = new ProcessStartInfo(archive) { UseShellExecute = false, WorkingDirectory = target };
+                foreach (var argument in new[] { "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART",
+                     "/CLOSEAPPLICATIONS", "/DIR=" + target })
+                    setup.ArgumentList.Add(argument);
+                using var process = Process.Start(setup)
+                    ?? throw new InvalidOperationException("Could not run the update installer.");
+                await process.WaitForExitAsync();
+                if (process.ExitCode != 0)
+                    throw new InvalidOperationException($"Installer returned exit code {process.ExitCode}.");
+                if (!File.Exists(Path.Combine(target, launch)))
+                    throw new InvalidOperationException("Updated application was not found.");
+                Process.Start(new ProcessStartInfo(Path.Combine(target, launch))
+                    { UseShellExecute = true, WorkingDirectory = target });
+                return 0;
+            }
             var staged = Path.Combine(Path.GetTempPath(), $"zora-staged-{Guid.NewGuid():N}");
             Directory.CreateDirectory(staged);
             try
