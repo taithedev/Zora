@@ -1,0 +1,68 @@
+<UserControl x:Class="Zora.Desktop.Views.ZuroPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Black" Foreground="White">
+  <Grid Margin="32,26,32,22">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid Grid.Row="0" Margin="0,0,0,26">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <StackPanel><TextBlock Text="Zuro." FontSize="35" FontWeight="SemiBold"/>
+        <TextBlock Text="Private owner workspace  /  Synced with Neon" FontSize="12" Foreground="{StaticResource SubText}" Margin="0,8,0,0"/></StackPanel>
+      <TextBlock Grid.Column="1" Text="OWNER ACCESS" FontSize="11" Foreground="{StaticResource SubText}" VerticalAlignment="Center"/>
+    </Grid>
+    <Border Grid.Row="1" x:Name="OwnerLoginPanel" CornerRadius="20" Background="#0D0D0D" MaxWidth="510" MaxHeight="390" Padding="38" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <StackPanel>
+        <Border Background="White" CornerRadius="14" Height="48" Width="48" HorizontalAlignment="Center" Margin="0,0,0,20"><TextBlock Text="Z" FontSize="25" FontWeight="Black" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+        <TextBlock Text="Unlock Zuro" TextAlignment="Center" FontSize="26" FontWeight="SemiBold"/>
+        <TextBlock Text="Enter the owner password from Neon. The password never gets stored by this app." Foreground="{StaticResource SubText}" TextAlignment="Center" FontSize="12" Margin="0,9,0,22"/>
+        <PasswordBox x:Name="OwnerPassword" Height="47" Padding="14,11" KeyDown="Password_KeyDown"/>
+        <Button x:Name="LoginButton" Content="UNLOCK OWNER WORKSPACE" Style="{StaticResource AccentButton}" Margin="0,14,0,0" Height="47" Click="Login_Click"/>
+      </StackPanel>
+    </Border>
+    <Grid Grid.Row="1" x:Name="OwnerDashboard" Visibility="Collapsed">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+      <Grid Grid.Row="0" Margin="0,0,0,24">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Border Grid.Column="0" Style="{StaticResource StatCard}" Margin="0,0,12,0"><StackPanel><TextBlock Text="TOTAL LICENSES" Foreground="{StaticResource SubText}" FontSize="10"/><TextBlock x:Name="TotalCount" Text="-" FontSize="28" Margin="0,8,0,0"/></StackPanel></Border>
+        <Border Grid.Column="1" Style="{StaticResource StatCard}" Margin="0,0,12,0"><StackPanel><TextBlock Text="ACTIVATED" Foreground="{StaticResource SubText}" FontSize="10"/><TextBlock x:Name="ActivatedCount" Text="-" FontSize="28" Margin="0,8,0,0"/></StackPanel></Border>
+        <Border Grid.Column="2" Style="{StaticResource StatCard}" Margin="0,0,12,0"><StackPanel><TextBlock Text="BANNED" Foreground="{StaticResource SubText}" FontSize="10"/><TextBlock x:Name="BannedCount" Text="-" FontSize="28" Margin="0,8,0,0"/></StackPanel></Border>
+        <Border Grid.Column="3" Style="{StaticResource StatCard}"><StackPanel><TextBlock Text="DEVICES" Foreground="{StaticResource SubText}" FontSize="10"/><TextBlock x:Name="DevicesCount" Text="-" FontSize="28" Margin="0,8,0,0"/></StackPanel></Border>
+      </Grid>
+      <Grid Grid.Row="1" Margin="0,0,0,20">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="80"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock Text="Generate" VerticalAlignment="Center" Margin="0,0,12,0"/>
+        <TextBox x:Name="QuantityBox" Grid.Column="1" Text="1" TextAlignment="Center" VerticalContentAlignment="Center" Height="43" Margin="0,0,10,0"/>
+        <Button Grid.Column="2" Content="CREATE REAL KEYS" Style="{StaticResource AccentButton}" Click="Generate_Click" Margin="0,0,10,0"/>
+        <StackPanel Grid.Column="4" Orientation="Horizontal">
+          <Button Content="SYNC NEON" Click="Refresh_Click" Margin="0,0,8,0"/>
+          <Button Content="LOCK" Click="Logout_Click"/>
+        </StackPanel>
+      </Grid>
+      <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
+        <Grid Grid.Column="0" Margin="0,0,15,0">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <TextBlock Text="LICENSE ACCOUNTS" FontWeight="SemiBold" Foreground="{StaticResource SubText}" FontSize="11" Margin="4,0,0,12"/>
+          <DataGrid Grid.Row="1" x:Name="LicensesGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="KEY" Binding="{Binding KeyLabel}" Width="2*"/>
+              <DataGridTextColumn Header="USER" Binding="{Binding Username}" Width="*"/>
+              <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="*"/>
+              <DataGridTextColumn Header="DEVICES" Binding="{Binding Devices}" Width="80"/>
+            </DataGrid.Columns>
+          </DataGrid>
+          <WrapPanel Grid.Row="2" Margin="0,13,0,0">
+            <Button Content="BAN" Click="Ban_Click" Margin="0,0,8,0"/>
+            <Button Content="UNBAN" Click="Unban_Click" Margin="0,0,8,0"/>
+            <Button Content="REVOKE" Click="Revoke_Click"/>
+          </WrapPanel>
+        </Grid>
+        <Grid Grid.Column="1"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <TextBlock Grid.Row="0" Text="NEW LICENSE KEYS" Foreground="{StaticResource SubText}" FontSize="11" FontWeight="SemiBold" Margin="4,0,0,12"/>
+          <TextBox Grid.Row="1" x:Name="GeneratedKeys" FontFamily="Consolas" FontSize="12" Text="Generated keys appear here once. Copy them before closing Zuro." TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" AcceptsReturn="True" IsReadOnly="True"/>
+          <Button Grid.Row="2" Content="COPY GENERATED KEYS" Margin="0,13,0,0" Click="CopyKeys_Click"/>
+        </Grid>
+      </Grid>
+    </Grid>
+    <TextBlock Grid.Row="2" x:Name="OwnerStatus" Text="Protected owner access" Foreground="{StaticResource SubText}" FontSize="12" Margin="4,17,0,0"/>
+  </Grid>
+</UserControl>

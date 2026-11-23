@@ -30,12 +30,24 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+            <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"
+                    CornerRadius="11" SnapsToDevicePixels="True" RenderTransformOrigin="0.5,0.5">
+              <Border.RenderTransform><ScaleTransform x:Name="ButtonScale" ScaleX="1" ScaleY="1"/></Border.RenderTransform>
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonSurface" Property="Opacity" Value="0.78"/></Trigger>
-              <Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonSurface" Property="Opacity" Value="0.55"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.88"/>
+                <Trigger.EnterActions><BeginStoryboard><Storyboard>
+                  <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1.025" Duration="0:0:0.15"/>
+                  <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1.025" Duration="0:0:0.15"/>
+                </Storyboard></BeginStoryboard></Trigger.EnterActions>
+                <Trigger.ExitActions><BeginStoryboard><Storyboard>
+                  <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.15"/>
+                  <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.15"/>
+                </Storyboard></BeginStoryboard></Trigger.ExitActions>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonSurface" Property="Opacity" Value="0.60"/></Trigger>
               <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ButtonSurface" Property="Opacity" Value="0.35"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -55,7 +67,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="SideSurface" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+            <Border x:Name="SideSurface" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="11">
               <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -65,6 +77,11 @@
         </Setter.Value>
       </Setter>
     </Style>
+    <Style x:Key="StatCard" TargetType="Border">
+      <Setter Property="Background" Value="#111111"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="Padding" Value="18,14"/>
+    </Style>
     <Style TargetType="TextBox">
       <Setter Property="Foreground" Value="{StaticResource Text}"/>
       <Setter Property="Background" Value="#141414"/>
@@ -73,6 +90,38 @@
       <Setter Property="FontSize" Value="14"/>
       <Setter Property="CaretBrush" Value="White"/>
       <Setter Property="SelectionBrush" Value="#555555"/>
+      <Setter Property="Template">
+        <Setter.Value><ControlTemplate TargetType="TextBox">
+          <Border Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}" ClipToBounds="True">
+            <ScrollViewer x:Name="PART_ContentHost" Focusable="False"/>
+          </Border>
+        </ControlTemplate></Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="TabControl">
+      <Setter Property="Background" Value="#080808"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style TargetType="TabItem">
+      <Setter Property="Background" Value="#161616"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem">
+        <Border x:Name="TabBackground" CornerRadius="10,10,0,0" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" Margin="3,5,0,0">
+          <ContentPresenter ContentSource="Header" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+        </Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsSelected" Value="True"><Setter TargetName="TabBackground" Property="Background" Value="#393939"/></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabBackground" Property="Opacity" Value="0.78"/></Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style TargetType="PasswordBox">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="Background" Value="#141414"/>
+      <Setter Property="CaretBrush" Value="White"/>
+      <Setter Property="BorderThickness" Value="0"/>
     </Style>
     <Style TargetType="ComboBox">
       <Setter Property="Foreground" Value="White"/>

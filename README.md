@@ -1,8 +1,17 @@
 # ZORA — Native Application & Unity Asset Studio
 
-**Version:** 0.4.0 developer preview · **Target price:** $25 per license · **Platform:** Windows 10/11 x64 · Native .NET 8 WPF, black-and-white square-cornered OLED theme. No Electron.
+**Version:** 0.5.0 developer preview · **Target price:** $25 per license · **Platform:** Windows 10/11 x64 · Native .NET 8 WPF, rounded monochrome OLED theme. No Electron.
 
 Zora starts with the centered license-key screen, then requests a username. All licensing and owner actions run against the deployed Neon Function; clients never receive Neon database credentials.
+
+## New in v0.5 — Zuro & Code Studio
+
+- **Refreshed monochrome interface:** rounded panels and buttons, Windows 11 rounded window treatment, animated button hover/press, and eased page transitions. All UI colors remain white, black, and grayscale.
+- **Code Studio:** integrated tabbed text/source editor using MIT-licensed [AvalonEdit](https://github.com/icsharpcode/AvalonEdit) `6.3.1.120`, with line numbers, monochrome syntax highlighting, open/new/save/save-as, unsaved-change prompts, search, go to line, Ctrl+D duplicate line, Ctrl+Tab switching, Tab-to-complete keyword suggestions, Ctrl+Space suggestions, and indentation. Double-click a text asset inside an *authorized original Unity project* to open it.
+- **Zuro:** owner workspace inside the same EXE, gated by the existing Neon owner-password API. Shows totals, activated users, bans, device counts, recent license records and real bulk license generation (1–500 keys), plus ban/unban/revoke actions. Owner sessions live in memory only and are cleared on logout; raw generated keys are shown once. The public-facing license does not grant admin permissions.
+- **Guardrails:** Code Studio only opens local source/text files up to 5 MB; it does not compile, run, patch or decrypt EXEs. Zuro never embeds the Neon database password or owner password into the executable.
+
+**Limitations:** Code Studio has keyword completion, not full Roslyn IntelliSense, debugger, or dnSpy-style assembly decompilation. Compiled Unity builds may contain scripts only as binaries and cannot be restored to original C# project files without loss. The v0.5 Windows build must pass CI before publication.
 
 ## New in v0.4
 
@@ -34,7 +43,7 @@ Zora starts with the centered license-key screen, then requests a username. All 
 - Neon database: project `Zora`, PostgreSQL 18, database `zora`.
 - Managed HTTPS function: slug `zoralicense` (the existing one; no new independent license server).
 - Build and unit tests: `.github/workflows/windows-build.yml` runs Node tests, Python tests, and publishes Windows app, updater and console.
-- Release publishing: push a tested version tag such as `v0.4.0`, or a reviewed `release: v0.4.0` commit to `main`, to trigger the workflow and publish both portable ZIPs to GitHub Releases. Future versions with higher semantic versions can update from that feed.
+- Release publishing: push a tested version tag such as `v0.4.0` to trigger the workflow and publish both portable ZIPs to GitHub Releases. Future versions with higher semantic versions can update from that feed.
 - To run locally: `python -m pip install -r engine/requirements.txt`, `cd server && npm test`, `python -m unittest discover -s engine/tests -v`, and `dotnet run --project desktop/Zora.Desktop` on Windows with the .NET 8 SDK.
 
 See [deployment details](docs/DEPLOY.md). The project is still a developer preview, so automated tests cannot substitute for testing with actual EXEs/APKs and Windows installation locations.

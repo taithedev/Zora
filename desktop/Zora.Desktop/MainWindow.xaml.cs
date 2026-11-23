@@ -10,6 +10,8 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Zora.Desktop.Models;
 using Zora.Desktop.Services;
 using Zora.Updates;
@@ -29,7 +31,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         AssetGrid.ItemsSource = _assets;
         SourceInitialized += (_, _) => {
-            try { var handle = new WindowInteropHelper(this).Handle; int dark = 1; DwmSetWindowAttribute(handle, 20, ref dark, sizeof(int)); }
+            try { var handle = new WindowInteropHelper(this).Handle; int dark = 1; DwmSetWindowAttribute(handle, 20, ref dark, sizeof(int)); int round = 2; DwmSetWindowAttribute(handle, 33, ref round, sizeof(int)); }
             catch { /* Native dark title-bar attribute may be unsupported. */ }
         };
     }
@@ -50,6 +52,7 @@ public partial class MainWindow : Window
         ActivationOverlay.Visibility = Visibility.Collapsed;
         WorkspaceRoot.Visibility = Visibility.Visible;
         StatusText.Text = "License verified · Ready";
+        SwitchPage("explorer");
         _ = CheckUpdatesAsync(false);
     }
     private void KeyNext_Click(object sender, RoutedEventArgs e)
@@ -105,7 +108,44 @@ public partial class MainWindow : Window
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void Maximize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
-    private void Explorer_Click(object sender, RoutedEventArgs e) => StatusText.Text = _source is null ? "Open or drop a Unity source" : "Asset explorer";
+    private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (!CodeStudioView.ConfirmExit()) e.Cancel = true;
+    }
+    private void Explorer_Click(object sender, RoutedEventArgs e) => SwitchPage("explorer");
+    private void CodeStudio_Click(object sender, RoutedEventArgs e) => SwitchPage("editor");
+    private void Zuro_Click(object sender, RoutedEventArgs e) => SwitchPage("zuro");
+    private void SwitchPage(string page)
+    {
+        ExplorerBody.Visibility = page == "explorer" ? Visibility.Visible : Visibility.Collapsed;
+        InspectorBody.Visibility = page == "explorer" ? Visibility.Visible : Visibility.Collapsed;
+        CodeStudioView.Visibility = page == "editor" ? Visibility.Visible : Visibility.Collapsed;
+        ZuroView.Visibility = page == "zuro" ? Visibility.Visible : Visibility.Collapsed;
+        var active = page == "editor" ? (FrameworkElement)CodeStudioView :
+                     page == "zuro" ? ZuroView : ExplorerBody;
+        active.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(230))
+        { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } });
+        var offset = new TranslateTransform(0, 12);
+        active.RenderTransform = offset;
+        offset.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(12, 0, TimeSpan.FromMilliseconds(260))
+        { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        if (page == "editor") CodeStudioView.FocusEditor();
+        if (page == "explorer") StatusText.Text = _source is null ? "Open a project or application" : "Asset explorer";
+    }
+    private void AssetGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_source is null || !Directory.Exists(_source) || AssetGrid.SelectedItem is not AssetRow row || row.Origin != "Project") return;
+        try
+        {
+            var root = Path.GetFullPath(_source);
+            var file = Path.GetFullPath(Path.Combine(root, row.Source.Replace('/', Path.DirectorySeparatorChar)));
+            var prefix = root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (!file.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) || !CodeStudioView.CanOpen(file)) return;
+            CodeStudioView.OpenFile(file);
+            SwitchPage("editor");
+        }
+        catch (Exception ex) { StatusText.Text = ex.Message; }
+    }
 
     private async void Window_Drop(object sender, DragEventArgs e)
     {

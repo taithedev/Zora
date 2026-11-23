@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SyntaxDefinition name="Zora monochrome" extensions=".cs;.lua;.py;.js;.jsx;.ts;.tsx;.json;.xml;.xaml;.html;.css;.shader;.hlsl;.cginc;.compute;.sql;.txt;.md;.yaml;.yml" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#777777" />
+  <Color name="String" foreground="#D0D0D0" />
+  <Color name="Keyword" foreground="#FFFFFF" fontWeight="bold" />
+  <RuleSet>
+    <Span color="Comment" begin="//" />
+    <Span color="Comment" begin="/\*" end="\*/" />
+    <Span color="String" begin="&quot;" end="&quot;" escapeCharacter="\" />
+    <Span color="String" begin="'" end="'" escapeCharacter="\" />
+    <Keywords color="Keyword">
+      <Word>class</Word><Word>struct</Word><Word>record</Word><Word>interface</Word><Word>namespace</Word>
+      <Word>public</Word><Word>private</Word><Word>protected</Word><Word>internal</Word><Word>static</Word>
+      <Word>readonly</Word><Word>const</Word><Word>void</Word><Word>return</Word><Word>new</Word><Word>async</Word>
+      <Word>await</Word><Word>using</Word><Word>if</Word><Word>else</Word><Word>for</Word><Word>foreach</Word>
+      <Word>while</Word><Word>switch</Word><Word>case</Word><Word>break</Word><Word>continue</Word>
+      <Word>try</Word><Word>catch</Word><Word>finally</Word><Word>throw</Word><Word>true</Word><Word>false</Word><Word>null</Word>
+      <Word>function</Word><Word>local</Word><Word>then</Word><Word>end</Word><Word>import</Word><Word>from</Word>
+      <Word>def</Word><Word>lambda</Word><Word>self</Word><Word>export</Word><Word>default</Word>
+    </Keywords>
+  </RuleSet>
+</SyntaxDefinition>
