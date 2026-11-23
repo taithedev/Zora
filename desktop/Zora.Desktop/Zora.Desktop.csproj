@@ -5,6 +5,7 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Zora</AssemblyName>
     <RootNamespace>Zora.Desktop</RootNamespace>
     <Version>0.4.0</Version>

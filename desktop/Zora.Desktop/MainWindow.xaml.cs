@@ -288,7 +288,7 @@ public partial class MainWindow : Window
         CheckUpdatesButton.IsEnabled = false;
         try
         {
-            if (manual) StatusText.Text = "Checking signed release metadata...";
+            if (manual) StatusText.Text = "Checking official release metadata...";
             var update = await _updates.CheckAndStageAsync();
             if (update is null)
             {
