@@ -31,3 +31,6 @@ CREATE TABLE IF NOT EXISTS zora_audit (
     details jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 CREATE INDEX IF NOT EXISTS idx_zora_audit_at ON zora_audit(occurred_at DESC);
+
+-- Owner authentication is provisioned non-destructively by migration-owner.sql.
+-- The one-time password hash is set with server/scripts/setup-owner.mjs.

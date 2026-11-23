@@ -1,32 +1,48 @@
-# Zora 0.2 — Neon Function deployment
+# Zora v0.3 — password-only Neon owner authentication
 
-## Existing Neon project
+## Live Neon architecture
 
-Neon project **Zora** (`dark-truth-55449043`) uses database **zora** in US East, PostgreSQL 18. Tables `zora_licenses`, `zora_devices`, and `zora_audit` already exist. Do **not** rerun destructive migration SQL. Source: `server/schema.sql`.
+Project: `Zora` (`dark-truth-55449043`) · database `zora` · branch `br-frosty-bar-bbmdnhr7` · function slug `zoralicense`.
 
-## Deployed Neon Function
+Endpoint: `https://br-frosty-bar-bbmdnhr7-zoralicense.compute.c-15.us-east-1.aws.neon.tech/`
 
-Neon reports the `zoralicense` function deployment as complete, with invocation URL `https://br-frosty-bar-bbmdnhr7-zoralicense.compute.c-15.us-east-1.aws.neon.tech/`. The private environment contains `ZORA_KEY_PEPPER`, `ZORA_SESSION_SECRET`, `ZORA_ADMIN_TOKEN`, and `ZORA_CLOUD_FUNCTION=1`. Neon injects `DATABASE_URL`. The function code builds through `.github/workflows/neon-function-bundle.yml`. End-to-end login smoke tests remain to be run before public sales.
+The owner Windows executable has this endpoint built in. **It asks only for the owner password.** It does not need a database URL, username, HTTP admin token, or URL input field. The URL is public, but the SQL credentials and password hashes are private to Neon.
 
-## Hosting-free activation architecture
+### Database migration (applied)
 
-The Windows app never talks directly to Postgres. Instead it calls one HTTPS **Neon Function** deployed in the same Neon project: `functions/license/index.mjs`. Neon automatically injects the Postgres connection URL on the function's branch. There is no separately managed API server or activation URL textbox in the app.
+`server/migration-owner.sql` creates `zora_owner_auth` and `zora_owner_sessions` without removing or changing existing license records. The owner password is salted and scrypt-hashed; plaintext passwords are never stored.
 
-The entrypoint imports `server/src/index.mjs` with an HTTP adapter. Bundle using Neon CLI, which includes dependencies (`pg`) and transitive imports:
+### Set the initial owner password (required)
 
-For subsequent deployments:
+1. In Neon Console, open **Zora** and copy its Postgres connection string securely for your own terminal. **Never** upload it to GitHub or distribute it in ZoraAdmin.exe.
+2. On the administrator PC, install Node.js 22+ and run `cd server && npm install`.
+3. Set the `DATABASE_URL` environment variable privately in that terminal. Do not paste the URL into chat or a committed `.env`.
+4. Run `node scripts/setup-owner.mjs`. It requests the password **twice with no terminal echo**, hashes it using scrypt, upserts it into `zora_owner_auth`, and revokes older owner sessions. The same script can rotate a forgotten password using your private Neon database access.
+5. If you have a private initial password file from the project setup, enter its password at this prompt. Otherwise choose a unique password at least 16 characters long. Do not store or reuse it in public files.
 
-1. From the repository root, install Neon CLI and link the existing Zora project/branch.
-2. Deploy slug `zoralicense` with entrypoint `functions/license/index.mjs` and Node.js 24; have the function environment define `ZORA_CLOUD_FUNCTION=1`.
-3. Store three random **server-only** secrets in the function environment: `ZORA_KEY_PEPPER`, `ZORA_SESSION_SECRET`, and `ZORA_ADMIN_TOKEN`. Each must be at least 24 characters. Never add them to a source file or a distributable EXE. Rotating the pepper invalidates existing license key hashes; treat it as a long-lived secret.
-4. Neon injects `DATABASE_URL` automatically. Confirm the public invocation URL `/health` responds with `{ "ok": true }` once deployed. If functions are unavailable in this Neon region/plan, use the existing Vercel serverless entry `api/index.mjs` as a secure alternative; a trusted backend remains necessary.
-5. On GitHub repository Settings > Secrets and variables > Actions > Variables, add `ZORA_PUBLIC_LICENSE_URL` set to the **public HTTPS Neon Function invocation URL**. No private database keys go in this variable. Re-run Windows CI to produce an activated build.
-6. Use the separate `ZoraAdmin.exe` owner utility only from your private PC. Configure `ZORA_API_URL` to the same invocation URL and `ZORA_ADMIN_TOKEN` to the owner token before running it.
+The initial owner password has not been seeded automatically. **Password sign-in won't work until this step finishes.** No app authentication token bypass is provided.
 
-New license keys are shown **once** and cannot later be recovered in plaintext from the database. Owner CLI can view their masked labels, activation state, created dates, ban/revoke status, and audit history. Back up keys securely off-repository. Keep the repository private if source confidentiality matters.
+### Deploy the updated Neon Function (required)
 
-## Verification and selling
+Neon Functions package entry: `functions/license/index.mjs`, which uses `server/src/index.mjs` and `server/src/owner.mjs`.
 
-Run both Node and Python tests plus Windows CI. Test scanning and recovering owned Unity projects, Unity EXE + Data folders, and APKs from multiple Unity versions; verify imported OBJ/textures and a recovery report in Unity Editor. Paid distribution also needs payment checkout that verifies real payments before key issuance, refunds and owner support. No live checkout has been configured.
+- Bundle using GitHub workflow `.github/workflows/neon-function-bundle.yml` or equivalent esbuild command. Ensure the bundle includes the `pg` dependency and emits `index.mjs` in a ZIP.
+- Deploy the ZIP to the existing Neon Function slug `zoralicense`, with Node.js 24, `ZORA_CLOUD_FUNCTION=1`, `ZORA_KEY_PEPPER`, and `ZORA_SESSION_SECRET` (existing deployment secrets). Neon injects `DATABASE_URL`. Preserve the pepper or existing license keys will no longer match.
+- `ZORA_ADMIN_TOKEN` can be removed from the function environment; it is ignored by v0.3.
+- Verify `/health` returns an `ok: true` response. Then test owner password sign-in and `/v1/admin/stats` with the owner console.
+- Ensure Windows CI includes the existing `ZORA_PUBLIC_LICENSE_URL` GitHub Actions variable for normal client activation.
 
-Only process content you own or are licensed to extract; Zora does not decrypt third-party DRM/encrypted files. A recovered compiled game is **not** a reproduction of its original Unity Editor project.
+No separate Node server or paid license server process is required in production. The managed Neon Function is the safe boundary between native clients and Postgres.
+
+### Owner console features
+
+Use `ZoraAdmin.exe`. Enter your owner password and type `help` to view the 49 menu choices. Supported operations include license creation, editing, searching, filtering, banning, unbanning, revoking, device management, expiration, username binding, audit filtering and exports, owner session control, password rotation, and health checks.
+
+- Bulk-generated keys are only shown once and are saved locally to a **new** JSON file. Keep exports encrypted or in private storage; they contain sensitive license metadata.
+- `Change owner password` revokes all active owner sessions; log in again with the new password.
+- Five incorrect passwords trigger a ten-minute database lockout. Contact Neon through your owner account for recovery, not customer support channels.
+- CSV files contain masked license identifiers, never complete license key material.
+
+### Verification before public sales
+
+Run server unit tests, Windows build, and live owner login tests. Confirm old API admin-token access fails, owner password rotation revokes sessions, and banned keys cannot refresh. Test each Unity EXE/APK importer and recovery outputs against owned Unity projects. A $25 payment checkout that verifies successful transactions server-side has **not** been integrated; do not treat generated keys as paid purchases.

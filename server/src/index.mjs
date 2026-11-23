@@ -1,10 +1,11 @@
 import http from 'node:http';
 import { Pool } from 'pg';
 import { hmac, isLicense, licenseLabel, newRefresh, normalizeLicense, randomLicense, safeEqual, sha256, signAccess, verifyAccess } from './crypto.mjs';
+import { createOwnerHandler } from './owner.mjs';
 
-const required = ['DATABASE_URL', 'ZORA_KEY_PEPPER', 'ZORA_SESSION_SECRET', 'ZORA_ADMIN_TOKEN'];
+const required = ['DATABASE_URL', 'ZORA_KEY_PEPPER', 'ZORA_SESSION_SECRET'];
 for (const key of required) if (!process.env[key] || process.env[key].length < 24) throw new Error(`Missing or insecure ${key}`);
-const cfg = { pepper: process.env.ZORA_KEY_PEPPER, session: process.env.ZORA_SESSION_SECRET, admin: process.env.ZORA_ADMIN_TOKEN };
+const cfg = { pepper: process.env.ZORA_KEY_PEPPER, session: process.env.ZORA_SESSION_SECRET };
 const db = new Pool({ connectionString: process.env.DATABASE_URL, max: 10, connectionTimeoutMillis: 8000, idleTimeoutMillis: 30000 });
 const buckets = new Map();
 const authRate = (ip) => {
@@ -106,10 +107,6 @@ async function verify(token) {
   if (!rows[0] || !isActive(rows[0]) || rows[0].username !== session.username) throw error(403, 'license_disabled', 'License is no longer active');
   return { active: true, username: session.username };
 }
-function assertAdmin(req) {
-  const provided = req.headers['x-zora-admin-token'];
-  if (!safeEqual(typeof provided === 'string' ? provided : '', cfg.admin)) throw error(401, 'admin_unauthorized', 'Invalid admin credentials');
-}
 async function createLicenses({ quantity = 1, maxDevices = 1, note = '' }) {
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500) throw error(400, 'invalid_quantity', 'Quantity must be between 1 and 500');
   if (!Number.isInteger(maxDevices) || maxDevices < 1 || maxDevices > 5) throw error(400, 'invalid_devices', 'Max devices must be 1-5');
@@ -127,6 +124,7 @@ async function createLicenses({ quantity = 1, maxDevices = 1, note = '' }) {
   } catch (e) { await c.query('ROLLBACK'); throw e; }
   finally { c.release(); }
 }
+const handleOwner = createOwnerHandler({ db, json, error, body, audit, createLicenses });
 async function handler(req, res) {
   try {
     const url = new URL(req.url, 'http://localhost');
@@ -142,49 +140,7 @@ async function handler(req, res) {
       const token = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
       return json(res, 200, await verify(token));
     }
-    if (path.startsWith('/v1/admin/')) {
-      assertAdmin(req);
-      if (req.method === 'POST' && path === '/v1/admin/licenses/bulk') return json(res, 201, { licenses: await createLicenses(await body(req)) });
-      if (req.method === 'GET' && path === '/v1/admin/licenses') {
-        const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit')) || 50));
-        const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
-        const { rows } = await db.query(`SELECT l.id,l.key_label,l.username,l.status,l.max_devices,l.created_at,l.activated_at,l.last_seen_at,l.expires_at,l.note,COUNT(d.id)::int AS devices
-          FROM zora_licenses l LEFT JOIN zora_devices d ON d.license_id=l.id GROUP BY l.id ORDER BY l.created_at DESC LIMIT $1 OFFSET $2`, [limit, offset]);
-        return json(res, 200, { licenses: rows });
-      }
-      if (req.method === 'GET' && path === '/v1/admin/stats') {
-        const { rows } = await db.query(`SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE username IS NOT NULL)::int AS activated,
-          COUNT(*) FILTER (WHERE status='banned')::int AS banned, COUNT(*) FILTER (WHERE status='revoked')::int AS revoked FROM zora_licenses`);
-        return json(res, 200, { ...rows[0], priceUsd: 25 });
-      }
-      if (req.method === 'GET' && path === '/v1/admin/audit') {
-        const { rows } = await db.query('SELECT id,occurred_at,license_id,action,actor,details FROM zora_audit ORDER BY occurred_at DESC LIMIT 100');
-        return json(res, 200, { events: rows });
-      }
-      const statusMatch = path.match(/^\/v1\/admin\/licenses\/([0-9a-f-]{36})\/status$/i);
-      if (req.method === 'POST' && statusMatch) {
-        const { status } = await body(req);
-        if (!['active', 'banned', 'revoked'].includes(status)) throw error(400, 'invalid_status', 'Use active, banned, or revoked');
-        const c = await db.connect();
-        try { await c.query('BEGIN');
-          const row = await c.query('UPDATE zora_licenses SET status=$2 WHERE id=$1 RETURNING id,status', [statusMatch[1], status]);
-          if (!row.rowCount) throw error(404, 'not_found', 'License not found');
-          await audit(c, row.rows[0].id, `license.${status}`, 'owner');
-          await c.query('COMMIT'); return json(res, 200, row.rows[0]);
-        } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
-      }
-      const resetMatch = path.match(/^\/v1\/admin\/licenses\/([0-9a-f-]{36})\/reset-devices$/i);
-      if (req.method === 'POST' && resetMatch) {
-        const c = await db.connect();
-        try { await c.query('BEGIN');
-          const record = await c.query('SELECT id FROM zora_licenses WHERE id=$1 FOR UPDATE', [resetMatch[1]]);
-          if (!record.rowCount) throw error(404, 'not_found', 'License not found');
-          const removed = await c.query('DELETE FROM zora_devices WHERE license_id=$1', [resetMatch[1]]);
-          await audit(c, resetMatch[1], 'license.devices_reset', 'owner', { count: removed.rowCount });
-          await c.query('COMMIT'); return json(res, 200, { reset: true, removed: removed.rowCount });
-        } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
-      }
-    }
+    if (path.startsWith('/v1/admin/')) return handleOwner(req, res, path, url);
     throw error(404, 'not_found', 'Endpoint not found');
   } catch (e) {
     if (!e.status) console.error('Zora API failure:', e.message);
