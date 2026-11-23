@@ -1,0 +1,9 @@
+{
+  "name": "zora-owner-cli",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "zora-admin": "./zora-admin.mjs" },
+  "scripts": { "start": "node zora-admin.mjs stats" },
+  "engines": { "node": ">=20" }
+}

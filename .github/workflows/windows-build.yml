@@ -1,0 +1,50 @@
+name: Zora Windows build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'engine/**'
+      - 'server/**'
+      - '.github/workflows/windows-build.yml'
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Test license logic
+        working-directory: server
+        run: npm test
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '8.0.x' }
+      - name: Install extractor dependencies
+        run: python -m pip install -r engine/requirements.txt
+      - name: Build bundled UnityPy engine
+        run: python -m PyInstaller --onefile --noconfirm --name zora-engine --distpath engine/dist engine/zora_engine.py
+      - name: Restore WPF packages
+        run: dotnet restore desktop/Zora.Desktop/Zora.Desktop.csproj
+      - name: Publish native Windows app
+        run: dotnet publish desktop/Zora.Desktop/Zora.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+      - name: Include extraction engine
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path publish/engine | Out-Null
+          Copy-Item engine/dist/zora-engine.exe publish/engine/zora-engine.exe
+          Compress-Archive -Path publish/* -DestinationPath Zora-Windows-x64.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Zora-Windows-x64
+          path: Zora-Windows-x64.zip
+          retention-days: 7

@@ -1,0 +1,26 @@
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+*.pfx
+*.pem
+*.key
+private-keys.json
+batch-keys.json
+keys*.json
+# Artifacts
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+**/bin/
+**/obj/
+dist/
+build/
+*.zip
+*.exe
+*.msi
+*.log
+.DS_Store
+.vs/

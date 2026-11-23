@@ -1,0 +1,50 @@
+using System.Diagnostics;
+using System.Text.Json;
+using Zora.Desktop.Models;
+namespace Zora.Desktop.Services;
+public sealed class EngineService
+{
+    private static (string command, List<string> args) Locate()
+    {
+        var baseDir = AppContext.BaseDirectory;
+        var exe = Path.Combine(baseDir, "engine", "zora-engine.exe");
+        if (File.Exists(exe)) return (exe, []);
+        var parent = new DirectoryInfo(baseDir);
+        for (var i = 0; i < 8 && parent is not null; i++, parent = parent.Parent)
+        {
+            var script = Path.Combine(parent.FullName, "engine", "zora_engine.py");
+            if (File.Exists(script)) return ("python", [script]);
+        }
+        throw new FileNotFoundException("Zora engine not found. The release includes engine/zora-engine.exe, or install Python + UnityPy for development.");
+    }
+    private static async Task<T> RunAsync<T>(IEnumerable<string> parameters, CancellationToken cancellation = default)
+    {
+        var (command, prefix) = Locate();
+        var info = new ProcessStartInfo(command) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+        foreach (var p in prefix.Concat(parameters)) info.ArgumentList.Add(p);
+        using var process = new Process { StartInfo = info };
+        if (!process.Start()) throw new InvalidOperationException("Could not start the Zora engine");
+        var outputTask = process.StandardOutput.ReadToEndAsync(cancellation);
+        var errTask = process.StandardError.ReadToEndAsync(cancellation);
+        await process.WaitForExitAsync(cancellation);
+        var output = await outputTask;
+        var stderr = await errTask;
+        if (string.IsNullOrWhiteSpace(output)) throw new InvalidOperationException("The extractor did not respond. " + stderr[..Math.Min(stderr.Length, 400)]);
+        using var document = JsonDocument.Parse(output);
+        if (document.RootElement.TryGetProperty("error", out var error)) throw new InvalidOperationException(error.GetString());
+        if (process.ExitCode != 0) throw new InvalidOperationException(stderr.Length > 0 ? stderr : "Extractor exited with an error");
+        return JsonSerializer.Deserialize<T>(output) ?? throw new InvalidOperationException("Invalid response from extractor");
+    }
+    public Task<ScanResult> ScanAsync(string path) => RunAsync<ScanResult>(["scan", "--source", path]);
+    public Task<ExportResult> ExportAsync(string path, string destination, IEnumerable<string>? ids = null)
+    {
+        List<string> args = ["export", "--source", path, "--destination", destination];
+        if (ids is not null)
+        {
+            var names = ids.ToArray();
+            if (names.Length == 0) throw new ArgumentException("No assets selected");
+            args.Add("--ids"); args.AddRange(names);
+        }
+        return RunAsync<ExportResult>(args);
+    }
+}
