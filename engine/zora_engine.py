@@ -224,6 +224,85 @@ def export_assets(input_path: str, destination: str, selected_ids: set[str] | No
     return {"exported": exported, "count": len(exported), "warnings": warnings[:200]}
 
 
+
+def detect_unity_version(source: Path, project: bool) -> str:
+    if project:
+        version_file = source / "ProjectSettings" / "ProjectVersion.txt"
+        if version_file.is_file():
+            m = re.search(r"m_EditorVersion:\s*([^\s]+)", version_file.read_text(encoding="utf-8", errors="replace"))
+            if m: return m.group(1)
+    for path, native in candidate_files(source, project):
+        if native: continue
+        try:
+            env = UnityPy.load(str(path))
+            for file in getattr(env, 'files', {}).values():
+                version = getattr(file, 'unity_version', None)
+                if version and re.match(r"^20\d\d\.\d+", str(version)): return str(version)
+        except Exception: pass
+    return "2022.3.0f1"  # Fallback only; report explains that this version was inferred.
+
+
+def recover_project(input_path: str, destination: str) -> dict:
+    source, root, existing_project = source_context(input_path)
+    out = Path(destination).expanduser().resolve()
+    if out == root or root.is_relative_to(out) or out.is_relative_to(root):
+        raise ValueError('Recovery destination must be outside the source directory')
+    name = clean_name(source.name if existing_project else "ZoraRecoveredProject")
+    project = out / name
+    if project.exists():
+        raise ValueError('Recovered project folder already exists; choose another output folder')
+    project.mkdir(parents=True)
+    warnings = []
+    exported_count = 0
+    version = detect_unity_version(source, existing_project)
+    try:
+        if existing_project:
+            for folder in ("Assets", "Packages", "ProjectSettings"):
+                src = source / folder
+                if src.is_dir():
+                    # Preserve the original .meta files, source C#, scenes, and prefabs.
+                    shutil.copytree(src, project / folder, symlinks=False)
+            exported_count = sum(1 for item in (project / 'Assets').rglob('*') if item.is_file())
+            summary = "Original Unity project folders copied, including source scripts and metadata."
+            is_original = True
+        else:
+            (project / "Assets" / "ZoraRecovered").mkdir(parents=True)
+            (project / "ProjectSettings").mkdir()
+            (project / "Packages").mkdir()
+            (project / "ProjectSettings" / "ProjectVersion.txt").write_text(f"m_EditorVersion: {version}\n", encoding="utf-8")
+            (project / "Packages" / "manifest.json").write_text(json.dumps({"dependencies": {}}, indent=2), encoding="utf-8")
+            result = export_assets(input_path, str(project / 'Assets' / 'ZoraRecovered'), None)
+            exported_count = result['count']
+            warnings.extend(result['warnings'])
+            summary = ('Importable Unity project scaffold made from recoverable textures, meshes, audio, fonts, '
+                       'text assets and JSON metadata. Original scripts, prefab wiring, scenes, shaders and '
+                       'project settings may not be reconstructable from a compiled build.')
+            is_original = False
+        report = {
+            "source": str(Path(input_path).expanduser().resolve()),
+            "unity_version": version,
+            "unity_version_approximate": not existing_project,
+            "original_project_preserved": is_original,
+            "exported_files": exported_count,
+            "summary": summary,
+            "limitations": [] if is_original else [
+                "This is not the original Unity source project.",
+                "Compiled Mono/IL2CPP game code is not restored to original editable C#.",
+                "Scene hierarchies, animator controllers, materials and prefab references may be incomplete or missing.",
+                "The inferred Unity editor version may not match the build.",
+                "DRM/encrypted assets are not bypassed."
+            ],
+            "warnings": warnings[:200],
+        }
+        (project / 'RECOVERY_REPORT.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+        (project / 'README.txt').write_text('Zora recovered Unity project\n\n' + summary +
+                                           '\n\nSee RECOVERY_REPORT.json before opening with Unity Hub.\n', encoding='utf-8')
+        return {"project_path": str(project), "count": exported_count, "warnings": warnings[:200]}
+    except Exception:
+        # Avoid leaving a misleading half-created project when reconstruction fails.
+        shutil.rmtree(project, ignore_errors=True)
+        raise
+
 def main():
     parser = argparse.ArgumentParser(description='Zora Unity project/build asset engine')
     sub = parser.add_subparsers(dest='command', required=True)
@@ -231,9 +310,13 @@ def main():
     p_export = sub.add_parser('export'); p_export.add_argument('--source', required=True)
     p_export.add_argument('--destination', required=True)
     p_export.add_argument('--ids', nargs='*', default=None)
+    p_recover = sub.add_parser('recover'); p_recover.add_argument('--source', required=True)
+    p_recover.add_argument('--destination', required=True)
     args = parser.parse_args()
     try:
-        value = scan(args.source) if args.command == 'scan' else export_assets(args.source, args.destination, set(args.ids) if args.ids else None)
+        if args.command == 'scan': value = scan(args.source)
+        elif args.command == 'recover': value = recover_project(args.source, args.destination)
+        else: value = export_assets(args.source, args.destination, set(args.ids) if args.ids else None)
         print(json.dumps(value, ensure_ascii=False))
     except Exception as exc:
         print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}))

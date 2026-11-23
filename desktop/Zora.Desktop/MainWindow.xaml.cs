@@ -1,12 +1,13 @@
 using System.IO;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Interop;
 using Zora.Desktop.Models;
@@ -26,24 +27,97 @@ public partial class MainWindow : Window
         AssetGrid.ItemsSource = _assets;
         SourceInitialized += (_, _) => {
             try { var handle = new WindowInteropHelper(this).Handle; int dark = 1; DwmSetWindowAttribute(handle, 20, ref dark, sizeof(int)); }
-            catch { /* Dark title bars are optional on older Windows. */ }
+            catch { /* Native dark title-bar attribute may be unsupported. */ }
         };
     }
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        StatusText.Text = "Checking license…";
-        if (!await _license.RefreshAsync())
-        {
-            var prompt = new LicenseWindow(_license) { Owner = this };
-            if (prompt.ShowDialog() != true) { Close(); return; }
-        }
+        ActivationOverlay.Visibility = Visibility.Visible;
+        WorkspaceRoot.Visibility = Visibility.Collapsed;
+        ActivationStatus.Text = "";
+        if (await _license.RefreshAsync()) EnterWorkspace();
+        else LicenseKeyBox.Focus();
+    }
+    private void EnterWorkspace()
+    {
         AccountLabel.Text = _license.Username;
-        StatusText.Text = "License active · Ready";
+        SessionStat.Text = "ACTIVE";
+        ActivationOverlay.Visibility = Visibility.Collapsed;
+        WorkspaceRoot.Visibility = Visibility.Visible;
+        StatusText.Text = "License verified · Ready";
+    }
+    private void KeyNext_Click(object sender, RoutedEventArgs e)
+    {
+        var key = LicenseKeyBox.Text.Trim().ToUpperInvariant();
+        if (!Regex.IsMatch(key, @"^ZORA-(?:[A-HJ-NP-Z2-9]{5}-){4}[A-HJ-NP-Z2-9]{5}$"))
+        {
+            ActivationStatus.Text = "Enter a valid ZORA license key.";
+            return;
+        }
+        ActivationStatus.Text = "";
+        KeyEntryPanel.Visibility = Visibility.Collapsed;
+        UsernameEntryPanel.Visibility = Visibility.Visible;
+        UsernameBox.Focus();
+    }
+    private void ActivationBack_Click(object sender, RoutedEventArgs e)
+    {
+        UsernameEntryPanel.Visibility = Visibility.Collapsed;
+        KeyEntryPanel.Visibility = Visibility.Visible;
+        ActivationStatus.Text = "";
+        LicenseKeyBox.Focus();
+    }
+    private void LicenseKey_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Return) KeyNext_Click(sender, e); }
+    private void Username_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Return) Activate_Click(sender, e); }
+    private async void Activate_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            ActivateButton.IsEnabled = false;
+            ActivationStatus.Text = "Checking license...";
+            await _license.ActivateAsync(UsernameBox.Text.Trim(), LicenseKeyBox.Text.Trim());
+            LicenseKeyBox.Clear();
+            EnterWorkspace();
+        }
+        catch (Exception ex) { ActivationStatus.Text = ex.Message; }
+        finally { ActivateButton.IsEnabled = true; }
+    }
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2) { Maximize_Click(sender, e); return; }
+        if (e.OriginalSource is DependencyObject d && FindParentButton(d)) return;
+        try { DragMove(); } catch (InvalidOperationException) { }
+    }
+    private static bool FindParentButton(DependencyObject? obj)
+    {
+        while (obj is not null)
+        {
+            if (obj is Button) return true;
+            obj = System.Windows.Media.VisualTreeHelper.GetParent(obj);
+        }
+        return false;
+    }
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void Maximize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void Explorer_Click(object sender, RoutedEventArgs e) => StatusText.Text = _source is null ? "Open or drop a Unity source" : "Asset explorer";
+
+    private async void Window_Drop(object sender, DragEventArgs e)
+    {
+        if (ActivationOverlay.Visibility == Visibility.Visible || !e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+        if (paths is { Length: > 0 }) await LoadAsync(paths[0]);
+    }
+    private void Window_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = ActivationOverlay.Visibility != Visibility.Visible && e.Data.GetDataPresent(DataFormats.FileDrop)
+            ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
     }
     private async void OpenProject_Click(object sender, RoutedEventArgs e)
     {
-        var picker = new OpenFolderDialog { Title = "Select a Unity project folder (with Assets and ProjectSettings)" };
+        var picker = new OpenFolderDialog { Title = "Select Unity project folder" };
         if (picker.ShowDialog() == true) await LoadAsync(picker.FolderName);
     }
     private async void OpenBuild_Click(object sender, RoutedEventArgs e)
@@ -59,17 +133,23 @@ public partial class MainWindow : Window
         if (_busy) return;
         try
         {
-            Busy(true, "Indexing assets…");
+            Busy(true, "Indexing assets...");
             _assets.Clear();
-            _source = source;
+            _source = null;
             SourceLabel.Text = source;
             var scan = await _engine.ScanAsync(source);
+            _source = source;
             foreach (var row in scan.Assets) _assets.Add(row);
+            IndexedStat.Text = _assets.Count.ToString("N0");
+            SourceStat.Text = Directory.Exists(source) && Directory.Exists(Path.Combine(source, "ProjectSettings")) ? "PROJECT" :
+                Path.GetExtension(source).Equals(".apk", StringComparison.OrdinalIgnoreCase) ? "APK" :
+                Path.GetExtension(source).Equals(".exe", StringComparison.OrdinalIgnoreCase) ? "EXE" : "ASSETS";
             RefreshFilter();
-            StatusText.Text = scan.Warnings.Count > 0 ? $"Indexed · {scan.Warnings.Count} warnings" : "Indexed successfully";
-            if (scan.Warnings.Count > 0) MessageBox.Show(string.Join("\n", scan.Warnings.Take(8)), "Zora import warnings", MessageBoxButton.OK, MessageBoxImage.Information);
+            NoticeLabel.Text = scan.Warnings.Count == 0 ? "Source indexed. Use EXPORT ALL for individual assets or RECOVER UNITY PROJECT for an importable project scaffold." :
+                $"{scan.Warnings.Count} files could not be parsed. {scan.Warnings[0]}";
+            StatusText.Text = scan.Warnings.Count > 0 ? $"Indexed · {scan.Warnings.Count} warnings" : "Source indexed";
         }
-        catch (Exception ex) { StatusText.Text = "Import failed"; MessageBox.Show(ex.Message, "Zora import failed", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        catch (Exception ex) { StatusText.Text = "Import failed"; NoticeLabel.Text = ex.Message; }
         finally { Busy(false); }
     }
     private void Search_Changed(object sender, TextChangedEventArgs e) => RefreshFilter();
@@ -90,8 +170,8 @@ public partial class MainWindow : Window
                 1 => asset.Type is "Texture2D" or "Sprite" or "Texture",
                 2 => asset.Type is "Mesh" or "Model",
                 3 => asset.Type is "AudioClip" or "Audio",
-                4 => asset.Type is "TextAsset" or "MonoBehaviour" or "Shader" or "Source",
-                5 => asset.Type is not ("Texture2D" or "Sprite" or "Texture" or "Mesh" or "Model" or "AudioClip" or "Audio" or "TextAsset" or "MonoBehaviour" or "Shader" or "Source"),
+                4 => asset.Type is "TextAsset" or "MonoBehaviour" or "Shader" or "Source" or "Material/Data" or "Scene/Prefab",
+                5 => asset.Type is not ("Texture2D" or "Sprite" or "Texture" or "Mesh" or "Model" or "AudioClip" or "Audio" or "TextAsset" or "MonoBehaviour" or "Shader" or "Source" or "Material/Data" or "Scene/Prefab"),
                 _ => true
             };
         };
@@ -102,14 +182,14 @@ public partial class MainWindow : Window
     {
         if (AssetGrid.SelectedItem is not AssetRow row)
         {
-            DetailName.Text = "No selection"; DetailType.Text = DetailOrigin.Text = DetailSize.Text = DetailSource.Text = "";
+            DetailName.Text = "Nothing selected"; DetailType.Text = DetailOrigin.Text = DetailSize.Text = DetailSource.Text = "";
             PreviewImage.Visibility = Visibility.Collapsed; NoPreviewText.Visibility = Visibility.Visible; return;
         }
         DetailName.Text = row.Name;
-        DetailType.Text = "Type: " + row.Type + (row.Exportable ? "" : " · metadata only");
-        DetailOrigin.Text = "Origin: " + row.Origin;
-        DetailSize.Text = "Size: " + row.SizeText;
-        DetailSource.Text = "Source: " + row.Source;
+        DetailType.Text = "TYPE  /  " + row.Type + (row.Exportable ? "" : "  /  METADATA ONLY");
+        DetailOrigin.Text = "ORIGIN  /  " + row.Origin;
+        DetailSize.Text = "SIZE  /  " + row.SizeText;
+        DetailSource.Text = "PATH  /  " + row.Source;
         PreviewImage.Visibility = Visibility.Collapsed; NoPreviewText.Visibility = Visibility.Visible;
         if (row.Origin == "Project" && _source is not null && row.Type == "Texture")
             ShowPreview(Path.Combine(_source, row.Source.Replace('/', Path.DirectorySeparatorChar)));
@@ -122,16 +202,16 @@ public partial class MainWindow : Window
             var img = new BitmapImage(); img.BeginInit(); img.CacheOption = BitmapCacheOption.OnLoad; img.UriSource = new Uri(file); img.EndInit(); img.Freeze();
             PreviewImage.Source = img; PreviewImage.Visibility = Visibility.Visible; NoPreviewText.Visibility = Visibility.Collapsed;
         }
-        catch { /* Some textures require conversion by the extractor. */ }
+        catch { /* Some compressed texture formats need conversion. */ }
     }
     private async void Preview_Click(object sender, RoutedEventArgs e)
     {
         if (_source is null || AssetGrid.SelectedItem is not AssetRow row) return;
         if (row.Type is not ("Texture2D" or "Sprite" or "Texture")) { StatusText.Text = "Select a texture or sprite"; return; }
-        if (!await _license.VerifyAsync()) { StatusText.Text = "Unable to verify license"; return; }
+        if (!await _license.VerifyAsync()) { RequireLicense(); return; }
         try
         {
-            Busy(true, "Rendering preview…");
+            Busy(true, "Rendering preview...");
             var temp = Path.Combine(Path.GetTempPath(), "Zora", "preview", Guid.NewGuid().ToString("N"));
             var result = await _engine.ExportAsync(_source, temp, [row.Id]);
             var png = result.Exported.FirstOrDefault(p => Path.GetExtension(p).Equals(".png", StringComparison.OrdinalIgnoreCase));
@@ -141,38 +221,62 @@ public partial class MainWindow : Window
         catch (Exception ex) { StatusText.Text = ex.Message; }
         finally { Busy(false); }
     }
+    private void RequireLicense()
+    {
+        SessionStat.Text = "LOCKED";
+        WorkspaceRoot.Visibility = Visibility.Collapsed;
+        ActivationOverlay.Visibility = Visibility.Visible;
+        UsernameEntryPanel.Visibility = Visibility.Collapsed;
+        KeyEntryPanel.Visibility = Visibility.Visible;
+        ActivationStatus.Text = "License validation failed. Enter a valid license key.";
+        LicenseKeyBox.Focus();
+    }
     private async void ExportSelected_Click(object sender, RoutedEventArgs e)
     {
         var ids = AssetGrid.SelectedItems.Cast<AssetRow>().Where(r => r.Exportable).Select(r => r.Id).ToArray();
         if (ids.Length == 0) { StatusText.Text = "Select one or more exportable assets"; return; }
         await ExportAsync(ids);
     }
-    private async void ExportAll_Click(object sender, RoutedEventArgs e)
-    {
-        await ExportAsync(null);
-    }
+    private async void ExportAll_Click(object sender, RoutedEventArgs e) => await ExportAsync(null);
     private async Task ExportAsync(string[]? ids)
     {
         if (_busy || _source is null) { StatusText.Text = "Open a Unity source first"; return; }
-        if (!await _license.VerifyAsync()) { StatusText.Text = "License verification required"; MessageBox.Show("Could not verify your license. Check the API connection and license status.", "Zora", MessageBoxButton.OK); return; }
-        var picker = new OpenFolderDialog { Title = "Select an empty output folder for extracted assets" };
+        if (!await _license.VerifyAsync()) { RequireLicense(); return; }
+        var picker = new OpenFolderDialog { Title = "Choose output folder for exported assets" };
         if (picker.ShowDialog() != true) return;
         try
         {
-            Busy(true, "Exporting files…");
+            Busy(true, "Exporting assets...");
             var result = await _engine.ExportAsync(_source, picker.FolderName, ids);
-            StatusText.Text = $"Exported {result.Count:N0} files";
-            MessageBox.Show($"Exported {result.Count:N0} files to:\n{picker.FolderName}\n\nWarnings: {result.Warnings.Count}" +
-                            (result.Warnings.Count > 0 ? "\n\n" + string.Join("\n", result.Warnings.Take(6)) : ""),
-                "Zora export complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            StatusText.Text = $"Exported {result.Count:N0} assets";
+            NoticeLabel.Text = $"Export completed to {picker.FolderName}. Warnings: {result.Warnings.Count}." +
+                               (result.Warnings.Count > 0 ? " " + result.Warnings[0] : "");
         }
-        catch (Exception ex) { StatusText.Text = "Export failed"; MessageBox.Show(ex.Message, "Zora export failed", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        catch (Exception ex) { StatusText.Text = "Export failed"; NoticeLabel.Text = ex.Message; }
+        finally { Busy(false); }
+    }
+    private async void RecoverProject_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _source is null) { StatusText.Text = "Open a Unity EXE, APK, or project first"; return; }
+        if (!await _license.VerifyAsync()) { RequireLicense(); return; }
+        var picker = new OpenFolderDialog { Title = "Choose an empty folder for the recovered Unity project" };
+        if (picker.ShowDialog() != true) return;
+        try
+        {
+            Busy(true, "Recovering Unity project...");
+            var result = await _engine.RecoverAsync(_source, picker.FolderName);
+            StatusText.Text = $"Recovered {result.Count:N0} files";
+            NoticeLabel.Text = $"Unity project created at {result.ProjectPath}. {result.Warnings.Count} warnings. " +
+                (result.Warnings.Count > 0 ? result.Warnings[0] : "Read RECOVERY_REPORT.json for recovery limits.");
+        }
+        catch (Exception ex) { StatusText.Text = "Recovery failed"; NoticeLabel.Text = ex.Message; }
         finally { Busy(false); }
     }
     private void Busy(bool busy, string? message = null)
     {
         _busy = busy;
-        ExportSelectedButton.IsEnabled = ExportAllButton.IsEnabled = !busy;
+        ExportSelectedButton.IsEnabled = ExportAllButton.IsEnabled = RecoverButton.IsEnabled = !busy;
+        WorkingBar.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         if (message is not null) StatusText.Text = message;
     }
 }

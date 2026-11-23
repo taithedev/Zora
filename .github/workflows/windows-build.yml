@@ -32,8 +32,22 @@ jobs:
         with: { dotnet-version: '8.0.x' }
       - name: Install extractor dependencies
         run: python -m pip install -r engine/requirements.txt
+      - name: Test Unity project recovery
+        run: python -m unittest discover -s engine/tests -v
       - name: Build bundled UnityPy engine
         run: python -m PyInstaller --onefile --noconfirm --name zora-engine --distpath engine/dist engine/zora_engine.py
+      - name: Configure public activation endpoint
+        shell: pwsh
+        env:
+          ZORA_PUBLIC_LICENSE_URL: ${{ vars.ZORA_PUBLIC_LICENSE_URL }}
+        run: |
+          if (-not [string]::IsNullOrWhiteSpace($env:ZORA_PUBLIC_LICENSE_URL)) {
+            if (-not $env:ZORA_PUBLIC_LICENSE_URL.StartsWith("https://")) { throw "Activation endpoint must use HTTPS" }
+            $path = "desktop/Zora.Desktop/Services/LicenseService.cs"
+            (Get-Content -Path $path -Raw).Replace("__ZORA_PUBLIC_LICENSE_URL__", $env:ZORA_PUBLIC_LICENSE_URL.TrimEnd('/')) | Set-Content -Path $path -Encoding utf8
+          } else {
+            Write-Host "No ZORA_PUBLIC_LICENSE_URL configured; build will show activation unavailable until deployed."
+          }
       - name: Restore WPF packages
         run: dotnet restore desktop/Zora.Desktop/Zora.Desktop.csproj
       - name: Publish native Windows app

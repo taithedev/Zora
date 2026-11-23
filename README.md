@@ -1,53 +1,41 @@
-# ZORA
-### A native OLED Unity asset workspace · Windows · Paid license: **$25 USD**
+# ZORA — Native Unity Recovery Studio
 
-Zora is an independently developed desktop asset inspection/export app for Unity project folders and authorized compiled builds. Its interface is native C# / WPF (no Electron). It uses a bundled Python extractor based on [UnityPy](https://github.com/K0lb3/UnityPy) (MIT license). The licensing API runs on Node.js + Neon PostgreSQL; there is a separate owner-only command-line license console.
+**Version:** 0.2.0 developer preview | **Price target:** $25 USD / license | **Platform:** Windows 10/11 x64, .NET 8 WPF (native, no Electron).
 
-> **Status: developer preview, not a finished commercial release.** Engine integrations and Windows builds must be validated against multiple real Unity versions. There is no payment checkout yet; a hosted API deployment must be configured separately. The public repository contains source code; keep production secrets in hosting environment variables, not in this repository.
+A strict black/white OLED desktop app with square controls, no ornamental outlines, no secondary activation popup, and a single workspace. The app first displays a centered **license key** input, then a **username** input. Valid activation opens the full workspace; subsequent sessions can resume using a protected refresh token. No database credentials, administrator keys, or API address are shown in the UI.
 
-## Current feature scope
+## Functionality
 
-- Load a Unity project folder with `Assets` + `ProjectSettings`, browse/copy original assets (FBX, OBJ, PNG, scripts, prefabs, scenes, etc.)
-- Load compiled Unity game `Game.exe` with nearby `Game_Data`, Unity APKs, `.assets`, `.bundle`, `.unity3d` and similar serialized files
-- Search, type filters, item metadata, multi-selection, native texture preview and on-demand serialized texture preview
-- Export decoded `Texture2D` / `Sprite` to PNG, `Mesh` to OBJ, `AudioClip` to WAV when decodable, fonts to TTF/OTF, `TextAsset` to raw text
-- Export readable `MonoBehaviour`, `Material`, `AnimationClip`, `Shader` metadata as JSON when type trees are available. **Not** full prefab/scene reconstruction, FBX rig reconstruction, or 3D scene rendering
-- License-bound username accounts, one activation device by default, online verification, secure random license keys, revocation, audit log
-- Native ZoraAdmin.exe owner console and Node.js CLI: bulk keys (up to 500), ban, unban, revoke, reset device activations, audit, stats, account list
+- Open original Unity project directories with `Assets` and `ProjectSettings`; preserve `.meta`, source `.cs`, `.unity` scenes, `.prefab` files, and settings when recovering projects you own.
+- Inspect **Unity Windows EXE** games (requires the nearby `<Game>_Data` folder), **APK** files, or serialized Unity assets with UnityPy.
+- Index, filter, preview texture assets, export supported textures/sprites as PNG, meshes as OBJ, audio as WAV where decodable, fonts, readable TextAssets, and JSON metadata from supported serialized types.
+- **Recover Unity project**: create a Unity Hub-importable project scaffold from a compiled game with the recovered assets plus `ProjectSettings`, a `Packages/manifest.json`, and a `RECOVERY_REPORT.json` recording limitations. Recover an original project by copying its actual Unity sources and `.meta` files.
+- Multi-selection exports, searchable asset grid, drag and drop, in-app status/warnings, one-window application with custom title bar.
+- Licensing in dedicated Neon **Zora** project: HMAC key hashes, per-license usernames, device activation, refresh sessions, bans, revocation, audit trail, and owner CLI key management (including bulk generation).
 
-**Limitations:** This app does not decrypt protected content, defeat DRM, or reconstruct entire Unity source projects from arbitrary games. Use only assets you own or have permission to extract. Zora cannot claim better feature coverage than AssetRipper at this stage.
+**Critical limitation:** A compiled EXE/APK does not contain an intact Unity Editor project. Zora cannot guarantee restoration of original source C#, scenes, prefab reference hierarchies, shader source, or imported mesh rigs. The recovery option produces a *best-effort importable project*, **not** the original project. This implementation does not bypass encryption, access restrictions, or DRM. Use only content you own or are permitted to extract.
 
-## Structure
+## Activation security
 
-```
-admin/                    Owner-only key management console
-server/                   Neon-backed license API and database migration
-engine/                   UnityPy asset index + export engine (Python)
-desktop/Zora.Desktop/      Native .NET 8 Windows WPF interface
-.github/workflows/        Windows build and licensing tests
-```
+Zora uses a **Neon Function** for secure activation and database queries. This is not a separately hosted license-server process; the function runs inside the Neon project and exposes a public HTTPS URL. Keeping all secret signing keys and database credentials in this trusted runtime is necessary: a distributable desktop EXE cannot safely connect to Postgres using privileged credentials. The desktop receives only a short-lived signed access token plus a refresh token protected by Windows DPAPI. No native DRM is unbreakable.
 
-## Local developer run
+- The Neon project and the licensing tables already exist.
+- **The Neon Function is source-ready but not yet deployed or configured with its secrets.** A build without the function's published HTTPS URL cannot activate; this is intentional, not a stubbed login.
+- The repository includes source for the Neon Function in `functions/license/index.mjs` and server-side licensing logic under `server/` (reused inside the function, not a Windows GUI or separate host).
+- Set the repository Actions variable `ZORA_PUBLIC_LICENSE_URL` to the live Neon Function invocation URL before building. It is inserted as a *public URL only* during CI. In local developer runs, environment variable `ZORA_API_URL` can override it for testing.
 
-1. Install **.NET 8 SDK**, **Node.js 20+**, and **Python 3.11** on Windows.
-2. Create the `Zora` Neon project (already created for this deployment) and run `server/schema.sql` on the `zora` database if deploying elsewhere.
-3. In `server`, `npm install`. Set `DATABASE_URL`, `ZORA_KEY_PEPPER`, `ZORA_SESSION_SECRET`, `ZORA_ADMIN_TOKEN`, then `npm start`. See `server/.env.example` and `docs/DEPLOY.md`. Only the API server gets database credentials.
-4. Set `ZORA_API_URL=http://127.0.0.1:8787` and `ZORA_ADMIN_TOKEN` in your terminal. Run `node admin/zora-admin.mjs create 1` (or run the separate ZoraAdmin.exe owner console) to generate your first key. **Keys are displayed only once.**
-5. `python -m pip install -r engine/requirements.txt`; then `dotnet run --project desktop/Zora.Desktop`. Enter a username, the generated key, and the local API URL in the native app.
-6. Select an owned Unity project or build and export supported assets to a separate folder.
+## Running and packaging
 
-The app calls the local Python script in a developer checkout. GitHub Actions packages it into `engine/zora-engine.exe` and builds a self-contained Windows release ZIP, plus a separate native ZoraAdmin.exe archive. The repository includes a Vercel serverless entry at `api/index.mjs`; configure encrypted environment variables before deploying it.
+Read `docs/DEPLOY.md` to deploy the Neon Function, set its secrets, generate the first keys, and configure CI. GitHub Actions packages the native app with its UnityPy extraction engine into one Zora distribution ZIP; `ZoraAdmin.exe` is a separate owner-only console utility.
 
-## Price and commercial protection
+The CLI can issue keys, but **payment checkout is not implemented**. Do not distribute a paid public release or claim the product is fully licensed until server-side $25 purchase confirmation and refunds are implemented and the release is tested against real Unity 2020–2026 examples.
 
-**Price target: $25/license.** `zora-admin create 1` generates a license; **it does not collect payment**. A later checkout must verify successful payment *server-side* before granting a key. The license API stores only HMAC hashes of keys and one-way hashes of refresh tokens. The desktop client stores its refresh token using Windows DPAPI. APIs check license and device status before continuing. No desktop app can be made impossible to crack; signing releases, private backend secrets, monitoring and defense-in-depth help.
+## Build tests
 
-Do **not** publish the owner's `ZORA_ADMIN_TOKEN`, Neon `DATABASE_URL`, `ZORA_KEY_PEPPER` or `ZORA_SESSION_SECRET`. The GitHub repository is currently **public**; make it private before relying on source secrecy for a commercial release.
+- `python -m unittest discover -s engine/tests -v`
+- `cd server && npm test`
+- Windows GitHub Actions publishes `Zora-Windows-x64.zip` and `ZoraAdmin-Windows-x64.zip` after a successful CI run.
 
-## Third-party licenses
+## Third-party code
 
-UnityPy: MIT, copyright respective contributors; see its upstream LICENSE. UnityPy's README requests commercial users consider sponsorship or charity donations. AssetRipper is GPL-3.0; **no AssetRipper implementation code has been copied into Zora**. Do not include it in a proprietary binary without evaluating GPL obligations.
-
-## Tests
-
-`cd server && npm test` runs crypto/key tests. The GitHub Actions workflow builds the Windows desktop and extraction engine on a Windows runner; this Linux authoring environment cannot compile WPF. Test with Unity samples before accepting real payments.
+UnityPy is MIT-licensed (upstream copyright and license notices apply). AssetRipper is GPL-3.0; no AssetRipper code is copied into this proprietary project. The product is not affiliated with Unity Technologies. Confirm third-party license obligations before selling.

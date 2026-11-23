@@ -37,6 +37,8 @@ public sealed class EngineService
         return JsonSerializer.Deserialize<T>(output) ?? throw new InvalidOperationException("Invalid response from extractor");
     }
     public Task<ScanResult> ScanAsync(string path) => RunAsync<ScanResult>(["scan", "--source", path]);
+    public Task<RecoverResult> RecoverAsync(string path, string destination) =>
+        RunAsync<RecoverResult>(["recover", "--source", path, "--destination", destination]);
     public Task<ExportResult> ExportAsync(string path, string destination, IEnumerable<string>? ids = null)
     {
         List<string> args = ["export", "--source", path, "--destination", destination];

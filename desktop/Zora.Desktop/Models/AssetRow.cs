@@ -22,3 +22,10 @@ public sealed class ExportResult
     [JsonPropertyName("warnings")] public List<string> Warnings { get; set; } = [];
     [JsonPropertyName("count")] public int Count { get; set; }
 }
+
+public sealed class RecoverResult
+{
+    [JsonPropertyName("project_path")] public string ProjectPath { get; set; } = "";
+    [JsonPropertyName("count")] public int Count { get; set; }
+    [JsonPropertyName("warnings")] public List<string> Warnings { get; set; } = [];
+}

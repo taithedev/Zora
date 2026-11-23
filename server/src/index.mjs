@@ -192,7 +192,7 @@ async function handler(req, res) {
   }
 }
 export default handler;
-if (process.env.VERCEL !== '1') {
+if (process.env.VERCEL !== '1' && process.env.ZORA_CLOUD_FUNCTION !== '1') {
   const host = process.env.HOST || '127.0.0.1';
   const port = Number(process.env.PORT || 8787);
   http.createServer(handler).listen(port, host, () => console.log(`Zora license API listening on ${host}:${port}`));

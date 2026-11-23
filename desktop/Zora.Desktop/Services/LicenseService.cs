@@ -11,7 +11,6 @@ public sealed class LicenseService
 {
     private sealed class LocalSettings
     {
-        public string ApiUrl { get; set; } = "http://127.0.0.1:8787";
         public string Username { get; set; } = "";
         public string InstallationId { get; set; } = Guid.NewGuid().ToString();
         public string ProtectedRefreshToken { get; set; } = "";
@@ -26,7 +25,12 @@ public sealed class LicenseService
     private readonly string _settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Zora", "settings.json");
     private LocalSettings _settings;
     private string _access = "";
-    public string ApiUrl { get => _settings.ApiUrl; set { _settings.ApiUrl = value.TrimEnd('/'); Save(); } }
+    // Public endpoint only. Neon connection credentials never enter desktop builds.
+    // Release builds inject ZORA_PUBLIC_LICENSE_URL at build time; local
+    // developer builds may use ZORA_API_URL in the environment.
+    private const string ReleaseEndpoint = "__ZORA_PUBLIC_LICENSE_URL__";
+    private string ApiUrl => (Environment.GetEnvironmentVariable("ZORA_API_URL") ??
+        (ReleaseEndpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? ReleaseEndpoint : "")).TrimEnd('/');
     public string Username => _settings.Username;
     public bool Active => !string.IsNullOrEmpty(_access);
     public LicenseService()
@@ -45,9 +49,11 @@ public sealed class LicenseService
     private static string Unprotect(string text) => Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(text), null, DataProtectionScope.CurrentUser));
     private Uri Endpoint(string path)
     {
-        if (!Uri.TryCreate(_settings.ApiUrl, UriKind.Absolute, out var uri) ||
+        if (string.IsNullOrWhiteSpace(ApiUrl))
+            throw new InvalidOperationException("Zora activation is not available. The owner must configure the Neon license function.");
+        if (!Uri.TryCreate(ApiUrl, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttps && !(uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
-            throw new InvalidOperationException("Use an HTTPS license server URL (HTTP is only allowed for localhost).");
+            throw new InvalidOperationException("Zora license service must use HTTPS.");
         return new Uri(uri, path);
     }
     private static async Task<TokenResponse> ReadTokenAsync(HttpResponseMessage response)
@@ -56,10 +62,10 @@ public sealed class LicenseService
         if (!response.IsSuccessStatusCode)
         {
             try { throw new InvalidOperationException(JsonDocument.Parse(text).RootElement.GetProperty("message").GetString()); }
-            catch (KeyNotFoundException) { throw new InvalidOperationException("License API rejected the request"); }
+            catch (KeyNotFoundException) { throw new InvalidOperationException("License activation was rejected"); }
         }
         return JsonSerializer.Deserialize<TokenResponse>(text, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-            ?? throw new InvalidOperationException("Invalid license server response");
+            ?? throw new InvalidOperationException("Invalid activation response");
     }
     private void Store(TokenResponse reply)
     {

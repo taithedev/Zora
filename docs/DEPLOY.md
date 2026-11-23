@@ -1,50 +1,26 @@
-# Zora deployment and licensing checklist
+# Zora 0.2 — Neon Function deployment
 
-## Neon database
+## Existing Neon project
 
-The dedicated Neon project is named **Zora**, with database **zora** (PostgreSQL 18, US East). Its project ID is `dark-truth-55449043`. The schema was created in the database on 2026-11-22; apply `server/schema.sql` only for another database or fresh deployment. There are no license keys until the owner generates them.
+Neon project **Zora** (`dark-truth-55449043`) uses database **zora** in US East, PostgreSQL 18. Tables `zora_licenses`, `zora_devices`, and `zora_audit` already exist. Do **not** rerun destructive migration SQL. Source: `server/schema.sql`.
 
-## License API
+## Hosting-free activation architecture
 
-Deploy the repository root as Vercel serverless functions (`api/index.mjs` and `vercel.json`) or deploy `server` to a Node.js 20+ host using HTTPS. The default API uses the Neon connection over TLS. Set these **server-only** secrets:
+The Windows app never talks directly to Postgres. Instead it calls one HTTPS **Neon Function** deployed in the same Neon project: `functions/license/index.mjs`. Neon automatically injects the Postgres connection URL on the function's branch. There is no separately managed API server or activation URL textbox in the app.
 
-- `DATABASE_URL` — copy from the Neon console or secret store (never put in desktop files)
-- `ZORA_KEY_PEPPER` — independently generated long random secret; changing it permanently invalidates stored key hashes and device IDs
-- `ZORA_SESSION_SECRET` — independently generated long random secret; rotation invalidates access tokens (15 minute lifetime)
-- `ZORA_ADMIN_TOKEN` — independent long random owner secret; rotate securely if compromised
-- `HOST=0.0.0.0` and your provider's `PORT` as needed
+The entrypoint imports `server/src/index.mjs` with an HTTP adapter. Bundle using Neon CLI, which includes dependencies (`pg`) and transitive imports:
 
-Generate each application secret with `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`. Do not log or commit the generated values. Confirm `GET /health` reports ok. Set desktop activation's server URL to your hosted HTTPS API. Do not bind the local HTTP API publicly without HTTPS.
+1. From the repository root, install Neon CLI and link the existing Zora project/branch.
+2. Deploy slug `zoralicense` with entrypoint `functions/license/index.mjs` and Node.js 24; have the function environment define `ZORA_CLOUD_FUNCTION=1`.
+3. Store three random **server-only** secrets in the function environment: `ZORA_KEY_PEPPER`, `ZORA_SESSION_SECRET`, and `ZORA_ADMIN_TOKEN`. Each must be at least 24 characters. Never add them to a source file or a distributable EXE. Rotating the pepper invalidates existing license key hashes; treat it as a long-lived secret.
+4. Neon injects `DATABASE_URL` automatically. Confirm the public invocation URL `/health` responds with `{ "ok": true }` once deployed. If functions are unavailable in this Neon region/plan, use the existing Vercel serverless entry `api/index.mjs` as a secure alternative; a trusted backend remains necessary.
+5. On GitHub repository Settings > Secrets and variables > Actions > Variables, add `ZORA_PUBLIC_LICENSE_URL` set to the **public HTTPS Neon Function invocation URL**. No private database keys go in this variable. Re-run Windows CI to produce an activated build.
+6. Use the separate `ZoraAdmin.exe` owner utility only from your private PC. Configure `ZORA_API_URL` to the same invocation URL and `ZORA_ADMIN_TOKEN` to the owner token before running it.
 
-## Owner CLI
+New license keys are shown **once** and cannot later be recovered in plaintext from the database. Owner CLI can view their masked labels, activation state, created dates, ban/revoke status, and audit history. Back up keys securely off-repository. Keep the repository private if source confidentiality matters.
 
-In an **owner-only** terminal, set `ZORA_ADMIN_TOKEN` and `ZORA_API_URL=https://your-actual-api-host`, then:
+## Verification and selling
 
-```
-node admin/zora-admin.mjs stats
-node admin/zora-admin.mjs create 1 1 --output private-keys.json
-node admin/zora-admin.mjs create 25 1 --output batch-keys.json
-node admin/zora-admin.mjs list
-node admin/zora-admin.mjs ban <license-id>
-node admin/zora-admin.mjs unban <license-id>
-node admin/zora-admin.mjs revoke <license-id>
-node admin/zora-admin.mjs reset-devices <license-id>
-node admin/zora-admin.mjs audit
-```
+Run both Node and Python tests plus Windows CI. Test scanning and recovering owned Unity projects, Unity EXE + Data folders, and APKs from multiple Unity versions; verify imported OBJ/textures and a recovery report in Unity Editor. Paid distribution also needs payment checkout that verifies real payments before key issuance, refunds and owner support. No live checkout has been configured.
 
-Raw key files contain full usable licenses. Keep them outside the public repository, transfer to buyers securely, and delete local copies once fulfilled. A lost license can be revoked and replaced; the original key cannot be recovered from its hash.
-
-## Sales / payments
-
-Current price target **$25 USD per lifetime license** (subject to your product terms). No sales service is implemented: do **not** claim automatic $25 payments, receipt validation, chargebacks, refund handling, or webhook issuance work yet. When adding a checkout, use a trusted payment provider's server-side webhook verification, idempotent order records and server-only key issuance. Work with a parent/guardian as needed for payment account eligibility.
-
-## Hardening before selling
-
-- Change the GitHub repository's public/private setting if you want private source distribution.
-- Require HTTPS, use a restricted hosting admin/secret environment, and rotate secrets properly.
-- Add payment webhooks, order records, purchase receipts, support and a key recovery/refund process.
-- Load-test the license API; configure rate limiting at hosting edge (in-memory limiter is per-process only).
-- Sign published EXE using a code signing certificate and use installer/release checksum verification.
-- Run integration tests against Neon and built Windows artifacts.
-- Perform third-party license reviews and compatibility testing with sample projects/games you have permission to use.
-- For production, keep the backend **private** and use alerts, backups, audits and monitoring. No DRM solution is unbreakable.
+Only process content you own or are licensed to extract; Zora does not decrypt third-party DRM/encrypted files. A recovered compiled game is **not** a reproduction of its original Unity Editor project.
